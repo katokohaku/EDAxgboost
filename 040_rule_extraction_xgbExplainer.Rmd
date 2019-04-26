@@ -1,0 +1,72 @@
+---
+author: "Satoshi Kato"
+title: "rule extraction from xgboost model"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = FALSE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+catf <- SKmisc::catf
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("DiagrammeR", dependencies = TRUE)
+install.packages("inTtrees", dependencies = TRUE)
+
+install.packages("devtools", dependencies = TRUE)
+devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(data.table)
+require(xgboost)
+library(xgboostExplainer)
+
+```
+
+# Preparation (continued)
+
+```{r load.model.and.data}
+loaded.obs  <- readRDS("./middle/data_and_model.Rds")
+
+model.xgb   <- loaded.obs$model$xgb 
+
+train.label <- loaded.obs$data$train$label
+train.matrix <- loaded.obs$data$train$matrix
+train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
+
+test.label  <- loaded.obs$data$test$label
+test.matrix <- loaded.obs$data$test$matrix
+test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
+
+```
+
