@@ -124,19 +124,6 @@ model.xgb <- xgb.train(params  = params,
 
 ```
 
-```{r fig.height=5, fig.width=5}
-test.pred <- predict(model.xgb, test.xgb.DMatrix)
-table(prediction = ifelse(test.pred > 0.5, 1, 0), 
-      truth      = test.label) %>% 
-  caret::confusionMatrix()
-
-test.roc  <- roc(predictions = test.pred, 
-                 labels      = as.factor(test.label))
-plot(test.roc, col = "red", lwd = 2,
-     main = sprintf("AUCROC = %.03f", auc(test.roc)))
-
-```
-
 # Save data and model
 
 ```{r save.object}
