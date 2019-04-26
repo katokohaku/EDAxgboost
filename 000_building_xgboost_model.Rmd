@@ -132,13 +132,11 @@ res <- list(
     original = HR.dummy,
     train = list(
       matrix = train.matrix,
-      label  = train.label,
-      xgb.DMatrix = train.xgb.DMatrix
+      label  = train.label
     ),
     test = list(
       matrix = test.matrix,
-      label  = test.label,
-      xgb.DMatrix = test.xgb.DMatrix
+      label  = test.label
     )
   ),
   model = list(
