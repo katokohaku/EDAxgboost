@@ -1,0 +1,168 @@
+---
+author: "Satoshi Kato"
+title: "building xgboost model"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = FALSE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+catf <- SKmisc::catf
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("breakDown",   dependencies = TRUE)
+install.packages("fastDummies", dependencies = TRUE)
+install.packages("xgboost",     dependencies = TRUE)
+install.packages("tidyverse",   dependencies = TRUE)
+install.packages("AUC",         dependencies = TRUE)
+
+install.packages("caret", dependencies = FALSE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(fastDummies)
+require(xgboost)
+require(tidyverse)
+require(AUC)
+require(caret)
+
+```
+
+# Data preparation
+
+```{r data.prep}
+data(HR_data, package = "breakDown")
+HR_data %>% str
+
+HR.dummy <- HR_data %>% 
+  dummy_cols(select_columns = c("sales", "salary"), remove_first_dummy = FALSE) %>% 
+  select(-sales, -salary, -sales_management, -salary_high)
+
+train.i <- sample(NROW(HR.dummy), NROW(HR.dummy) / 3)
+test.i  <- setdiff(1:NROW(HR.dummy), train.i)
+
+train.matrix <- HR.dummy[train.i, ] %>% select(-left) %>% as.matrix()
+# train.matrix %>% str
+train.label  <- HR.dummy[train.i, ]$left
+train.xgb.DMatrix <- xgb.DMatrix(train.matrix, label = train.label)
+table(train.label)
+
+test.matrix <- HR.dummy[test.i, ] %>% select(-left) %>% as.matrix()
+# test.matrix %>% str
+test.label  <- HR.dummy[test.i, ]$left
+test.xgb.DMatrix <- xgb.DMatrix(test.matrix, label = test.label)
+table(test.label)
+
+```
+
+# parameter settings for XGBoost
+
+see. https://xgboost.readthedocs.io/en/latest/parameter.html
+
+```{r parameter.settings}
+params <- list(
+  booster      = "gbtree", # MUST be set booster = "gbtree" to build explainer
+  objective    = "binary:logistic",
+  eval_metric  = "auc",    # instead of "logloss", "error" and "aucpr"
+  max_depth = 5,
+  colsample_bytree= 0.8,
+  subsample = 0.8,
+  min_child_weight = 3,
+  eta   = 0.05,
+  alpha = 0.25,
+  gamma = 0
+) 
+
+```
+
+```{r xgb.cv}
+cv <- xgb.cv(params  = params, 
+             verbose = 1,
+             data    = train.xgb.DMatrix,
+             nrounds = 200,
+             nfold   = 5,
+             early_stopping_rounds = 10)
+
+print(cv, verbose=TRUE)
+
+```
+
+```{r}
+model.xgb <- xgb.train(params  = params, 
+                       verbose = 1,
+                       data    = train.xgb.DMatrix,
+                       nrounds = cv$best_iteration,
+                       nfold   = 5)
+
+```
+
+```{r fig.height=5, fig.width=5}
+test.pred <- predict(model.xgb, test.xgb.DMatrix)
+table(prediction = ifelse(test.pred > 0.5, 1, 0), 
+      truth      = test.label) %>% 
+  caret::confusionMatrix()
+
+test.roc  <- roc(predictions = test.pred, 
+                 labels      = as.factor(test.label))
+plot(test.roc, col = "red", lwd = 2,
+     main = sprintf("AUCROC = %.03f", auc(test.roc)))
+
+```
+
+# Save data and model
+
+```{r save.object}
+res <- list(
+  data = list(
+    original = HR.dummy,
+    train = list(
+      matrix = train.matrix,
+      label  = train.label,
+      xgb.DMatrix = train.xgb.DMatrix
+    ),
+    test = list(
+      matrix = test.matrix,
+      label  = test.label,
+      xgb.DMatrix = test.xgb.DMatrix
+    )
+  ),
+  model = list(
+    param.set = params,
+    cv = cv,
+    xgb = model.xgb
+  )
+)
+ 
+saveRDS(res, file = "./middle/data_and_model.Rds")
+  
+```
+
+
