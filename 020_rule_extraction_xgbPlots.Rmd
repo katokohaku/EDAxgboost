@@ -8,6 +8,7 @@ output:
     pandoc_args:
       - --from
       - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    keep_md: yes
     toc: yes
   word_document:
     toc: yes
