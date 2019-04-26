@@ -147,7 +147,9 @@ res <- list(
 )
  
 saveRDS(res, file = "./middle/data_and_model.Rds")
-  
+xgb.DMatrix.save(train.xgb.DMatrix, fname = "./middle/train.xgbDMatrix")
+xgb.DMatrix.save(test.xgb.DMatrix,  fname = "./middle/test.xgbDMatrix")
+
 ```
 
 

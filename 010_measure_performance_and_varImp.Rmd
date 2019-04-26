@@ -1,0 +1,112 @@
+---
+author: "Satoshi Kato"
+title: "measure performance & feature importance of xgboost model"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = FALSE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+catf <- SKmisc::catf
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("DALEX",   dependencies = TRUE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(xgboost)
+require(AUC)
+require(caret)
+require(DALEX)
+
+```
+
+# Preparation (continued)
+
+```{r load.model.and.data}
+loaded.obs  <- readRDS("./middle/data_and_model.Rds")
+
+model.xgb   <- loaded.obs$model$xgb 
+train.label <- loaded.obs$data$train$label
+train.matrix <- loaded.obs$data$train$matrix
+
+test.label  <- loaded.obs$data$test$label
+
+train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
+test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
+
+```
+
+# Predictive performances with test set.
+
+```{r fig.height=5, fig.width=5}
+test.pred <- predict(model.xgb, test.xgb.DMatrix)
+table(prediction = ifelse(test.pred > 0.5, 1, 0), 
+      truth      = test.label) %>% 
+  caret::confusionMatrix()
+
+test.roc  <- roc(predictions = test.pred, 
+                 labels      = as.factor(test.label))
+plot(test.roc, col = "red", lwd = 2,
+     main = sprintf("test set AUCROC = %.03f", auc(test.roc)))
+
+```
+
+# feature importance
+
+## based on xgboost structure
+
+```{r xgb.importance}
+var.imp <- xgb.importance(model = model.xgb,
+                          feature_names = dimnames(train.xgb.DMatrix)[[2]])
+var.imp %>% mutate_if(is.numeric, round, digits = 4)
+```
+
+## based on permutation 
+
+```{r explainer.DALEX}
+predict.classif <- function(model, x) {
+  pred.x <- predict(model, x)
+  ifelse(pred.x > 0.5, 1, 0)
+}
+# predict.classif(model.xgb, train.xgb.DMatrix)
+explainer.xgb <- DALEX::explain(model.xgb, 
+                                data  = test.matrix, 
+                                y     = test.label, 
+                                predict_function = predict.classif,
+                                label = "xgboost")
+
+vd.xgb <- variable_importance(explainer.xgb, type = "raw")
+plot(vd.xgb)
+```
+
+
