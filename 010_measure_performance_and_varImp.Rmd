@@ -58,10 +58,10 @@ loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 model.xgb   <- loaded.obs$model$xgb 
 train.label <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
+train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 
 test.label  <- loaded.obs$data$test$label
-
-train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
+test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 
 ```
@@ -94,15 +94,9 @@ var.imp %>% mutate_if(is.numeric, round, digits = 4)
 ## based on permutation 
 
 ```{r explainer.DALEX}
-predict.classif <- function(model, x) {
-  pred.x <- predict(model, x)
-  ifelse(pred.x > 0.5, 1, 0)
-}
-# predict.classif(model.xgb, train.xgb.DMatrix)
 explainer.xgb <- DALEX::explain(model.xgb, 
                                 data  = test.matrix, 
                                 y     = test.label, 
-                                predict_function = predict.classif,
                                 label = "xgboost")
 
 vd.xgb <- variable_importance(explainer.xgb, type = "raw")
