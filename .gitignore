@@ -4,6 +4,4 @@
 .Ruserdata
 *.docx
 *_cache
-*_files
 middle/*
-000_building_xgboost_model.docx

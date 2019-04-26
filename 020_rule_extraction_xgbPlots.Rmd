@@ -31,17 +31,11 @@ knitr::opts_chunk$set(collapse = FALSE,
                       include = TRUE,
                       echo    = TRUE)
 
-catf <- SKmisc::catf
-
 set.seed(1)
 ```
 
 ```{r install.requirements, eval = FALSE}
 install.packages("DiagrammeR", dependencies = TRUE)
-install.packages("inTtrees", dependencies = TRUE)
-
-install.packages("devtools", dependencies = TRUE)
-devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
 
 ```
 

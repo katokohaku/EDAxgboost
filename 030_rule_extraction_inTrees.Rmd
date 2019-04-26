@@ -31,13 +31,12 @@ knitr::opts_chunk$set(collapse = FALSE,
                       include = TRUE,
                       echo    = TRUE)
 
-catf <- SKmisc::catf
-
 set.seed(1)
 ```
 
 ```{r install.requirements, eval = FALSE}
 install.packages("inTtrees", dependencies = TRUE)
+install.packages("kableExtra", dependencies = TRUE)
 
 ```
 
@@ -47,6 +46,8 @@ require(data.table)
 require(xgboost)
 library(inTrees)
 library(xtable)
+require(knitr)
+require(kableExtra)
 
 require(AUC)
 require(caret)
@@ -88,7 +89,7 @@ ruleMetric <- getRuleMetric(ruleExec,X = train.matrix,target = train.label)
 # prune each rule
 ruleMetric <- pruneRule(ruleMetric, X = train.matrix,target = train.label)
 ruleMetric <- unique(ruleMetric)
-ruleMetric %>% str
+# ruleMetric %>% str
 
 ```
 
@@ -98,11 +99,13 @@ ruleMetric %>% str
 learner <- buildLearner(ruleMetric, X = train.matrix, target = train.label)
 learner.readable <- presentRules(learner,colnames(train.matrix))
 
-```
-
-```{r, results="asis"}
-# format the rule and metrics as a table in latex code
-print(xtable(learner.readable), type = "html", floating = TRUE, include.rownames=FALSE)
+learner.readable %>% 
+  data.frame %>% 
+  select(pred, condition, everything()) %>%
+  mutate(freq = freq %>% as.character() %>% as.numeric() %>% round(digits = 3),
+         err  = err  %>% as.character() %>% as.numeric() %>% round(digits = 3)) %>% 
+  kable(format = "html") %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
 
 ```
 
@@ -112,17 +115,24 @@ print(xtable(learner.readable), type = "html", floating = TRUE, include.rownames
 learner <- buildLearner(ruleMetric, X = train.matrix, target = train.label)
 learner.readable <- presentRules(learner,colnames(train.matrix))
 pred.intrees <- applyLearner(learner,    X = train.matrix)
-table(prediction = pred.intrees, truth = train.label)
+table(prediction = pred.intrees, truth = train.label) %>% 
+  caret::confusionMatrix()
 
 ```
 
 ## show all extracted
 
 ```{r, results="asis"}
-# more readable format
-ruleMetric.readable <- presentRules(ruleMetric,colnames(train.matrix))
-print(xtable(ruleMetric.readable), type = "html", floating = TRUE, include.rownames=FALSE)
-
+ruleMetric  %>%
+  presentRules(colnames(train.matrix)) %>% 
+  data.frame %>% 
+  select(pred, condition, everything()) %>%
+  mutate(pred = pred %>% as.character() %>% as.numeric() %>% round(digits = 6),
+         freq = freq %>% as.character() %>% as.numeric() %>% round(digits = 3),
+         err  = err  %>% as.character() %>% as.numeric() %>% round(digits = 3)) %>%
+  arrange(pred) %>% 
+  kable(format = "html") %>% 
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, position = "left")
 ```
 
 

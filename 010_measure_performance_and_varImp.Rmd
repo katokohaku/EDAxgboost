@@ -9,6 +9,7 @@ output:
       - --from
       - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
     toc: yes
+    keep_md: yes
   word_document:
     toc: yes
     toc_depth: 3
@@ -30,8 +31,6 @@ knitr::opts_chunk$set(collapse = FALSE,
                       warning = FALSE, 
                       include = TRUE,
                       echo    = TRUE)
-
-catf <- SKmisc::catf
 
 set.seed(1)
 ```
