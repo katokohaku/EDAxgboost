@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: "measure performance & feature importance of xgboost model"
+title: rule extraction from xgboost model"
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -37,14 +37,21 @@ set.seed(1)
 ```
 
 ```{r install.requirements, eval = FALSE}
-install.packages("DALEX",   dependencies = TRUE)
-install.packages("Ckmeans.1d.dp", dependencies = TRUE)
+install.packages("DiagrammeR", dependencies = TRUE)
+install.packages("inTtrees", dependencies = TRUE)
+
+install.packages("devtools", dependencies = TRUE)
+devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
 
 ```
 
 ```{r require.packages, message=FALSE}
 require(tidyverse)
+require(data.table)
 require(xgboost)
+library(inTrees)
+library(xtable)
+
 require(AUC)
 require(caret)
 require(DALEX)
@@ -68,46 +75,39 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 
 ```
 
-# Predictive performances with test set.
+# View tree model structure
 
-```{r fig.height=5, fig.width=5}
-test.pred <- predict(model.xgb, test.xgb.DMatrix)
-table(prediction = ifelse(test.pred > 0.5, 1, 0), 
-      truth      = test.label) %>% 
-  caret::confusionMatrix()
+## Parse a boosted tree model text dump into a data.table structure.
 
-test.roc  <- roc(predictions = test.pred, 
-                 labels      = as.factor(test.label))
-plot(test.roc, col = "red", lwd = 2,
-     main = sprintf("test set AUCROC = %.03f", auc(test.roc)))
+```{r}
+xgb.model.dt.tree(model = model.xgb) %>% 
+  mutate(Feature = str_trunc(Feature, width = 12, side = "right"),
+         Quality = round(Quality, 2),
+         Cover   = as.integer(Cover)) %>% 
+  data.table()
 
 ```
 
-# feature importance
+## Project all trees on one tree and plot it
 
-## based on xgboost structure
-
-The ggplot-backend method also performs 1-D custering of the importance values, with bar colors coresponding to different clusters that have somewhat similar importance values.
-
-```{r xgb.importance}
-var.imp <- xgb.importance(model = model.xgb,
-                          feature_names = dimnames(train.xgb.DMatrix)[[2]])
-
-var.imp %>% mutate_if(is.numeric, round, digits = 4)
-xgb.ggplot.importance(var.imp)
+```{r, fig.height=8, fig.width=8}
+xgb.plot.multi.trees(model = model.xgb)
 
 ```
 
-## based on permutation 
+# Plot a boosted tree model
 
-```{r explainer.DALEX}
-explainer.xgb <- DALEX::explain(model.xgb, 
-                                data  = test.matrix, 
-                                y     = test.label, 
-                                label = "xgboost")
+## First tree
 
-vd.xgb <- variable_importance(explainer.xgb, type = "raw")
-plot(vd.xgb)
+```{r, fig.height=8, fig.width=8}
+xgb.plot.tree(model = model.xgb, trees = 0)
+
 ```
 
+## Following booster
+
+```{r, fig.height=8, fig.width=8}
+xgb.plot.tree(model = model.xgb, trees = 1)
+
+```
 

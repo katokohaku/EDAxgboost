@@ -1,0 +1,129 @@
+---
+author: "Satoshi Kato"
+title: "rule extraction from xgboost model"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = FALSE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+catf <- SKmisc::catf
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("inTtrees", dependencies = TRUE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(data.table)
+require(xgboost)
+library(inTrees)
+library(xtable)
+
+require(AUC)
+require(caret)
+require(DALEX)
+
+```
+
+# Preparation (continued)
+
+```{r load.model.and.data}
+loaded.obs  <- readRDS("./middle/data_and_model.Rds")
+
+model.xgb   <- loaded.obs$model$xgb 
+
+train.label <- loaded.obs$data$train$label
+train.matrix <- loaded.obs$data$train$matrix
+train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
+
+test.label  <- loaded.obs$data$test$label
+test.matrix <- loaded.obs$data$test$matrix
+test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
+
+```
+
+# Extract rules using inTrees
+
+## rule extraction
+
+```{r inTrees}
+require(inTrees)
+treeList <- XGB2List(model.xgb, X = train.matrix)
+
+ruleExec <- extractRules(treeList, X = train.matrix)
+ruleExec <- unique(ruleExec)
+
+# measure rules
+ruleMetric <- getRuleMetric(ruleExec,X = train.matrix,target = train.label)
+
+# prune each rule
+ruleMetric <- pruneRule(ruleMetric, X = train.matrix,target = train.label)
+ruleMetric <- unique(ruleMetric)
+ruleMetric %>% str
+
+```
+
+## simplify rules
+
+```{r}
+learner <- buildLearner(ruleMetric, X = train.matrix, target = train.label)
+learner.readable <- presentRules(learner,colnames(train.matrix))
+
+```
+
+```{r, results="asis"}
+# format the rule and metrics as a table in latex code
+print(xtable(learner.readable), type = "html", floating = TRUE, include.rownames=FALSE)
+
+```
+
+## predict by simplified rules
+
+```{r}
+learner <- buildLearner(ruleMetric, X = train.matrix, target = train.label)
+learner.readable <- presentRules(learner,colnames(train.matrix))
+pred.intrees <- applyLearner(learner,    X = train.matrix)
+table(prediction = pred.intrees, truth = train.label)
+
+```
+
+## show all extracted
+
+```{r, results="asis"}
+# more readable format
+ruleMetric.readable <- presentRules(ruleMetric,colnames(train.matrix))
+print(xtable(ruleMetric.readable), type = "html", floating = TRUE, include.rownames=FALSE)
+
+```
+
+
+
