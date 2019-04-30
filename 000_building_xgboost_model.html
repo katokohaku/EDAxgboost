@@ -191,7 +191,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">building xgboost model</h1>
 <h4 class="author">Satoshi Kato</h4>
-<h4 class="date">2019/04/26</h4>
+<h4 class="date">2019/04/30</h4>
 
 </div>
 
@@ -237,7 +237,8 @@ HR_data %&gt;% str</code></pre>
 train.i &lt;- sample(NROW(HR.dummy), NROW(HR.dummy) / 3)
 test.i  &lt;- setdiff(1:NROW(HR.dummy), train.i)
 
-train.matrix &lt;- HR.dummy[train.i, ] %&gt;% select(-left) %&gt;% as.matrix()
+train.df     &lt;- HR.dummy[train.i, ] 
+train.matrix &lt;- train.df %&gt;% select(-left) %&gt;% as.matrix()
 # train.matrix %&gt;% str
 train.label  &lt;- HR.dummy[train.i, ]$left
 train.xgb.DMatrix &lt;- xgb.DMatrix(train.matrix, label = train.label)
@@ -245,7 +246,8 @@ table(train.label)</code></pre>
 <pre><code>train.label
    0    1 
 3801 1198 </code></pre>
-<pre class="r"><code>test.matrix &lt;- HR.dummy[test.i, ] %&gt;% select(-left) %&gt;% as.matrix()
+<pre class="r"><code>test.df     &lt;- HR.dummy[test.i, ] 
+test.matrix &lt;- test.df %&gt;% select(-left) %&gt;% as.matrix()
 # test.matrix %&gt;% str
 test.label  &lt;- HR.dummy[test.i, ]$left
 test.xgb.DMatrix &lt;- xgb.DMatrix(test.matrix, label = test.label)
@@ -357,10 +359,12 @@ Best iteration:
   data = list(
     original = HR.dummy,
     train = list(
+      dummy.data.frame = train.df,
       matrix = train.matrix,
       label  = train.label
     ),
     test = list(
+      dummy.data.frame = test.df,
       matrix = test.matrix,
       label  = test.label
     )

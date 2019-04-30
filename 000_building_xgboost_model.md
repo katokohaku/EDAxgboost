@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "building xgboost model"
-date: "2019/04/26"
+date: "2019/04/30"
 output:
   html_document:
     fig_caption: yes
@@ -72,7 +72,8 @@ HR.dummy <- HR_data %>%
 train.i <- sample(NROW(HR.dummy), NROW(HR.dummy) / 3)
 test.i  <- setdiff(1:NROW(HR.dummy), train.i)
 
-train.matrix <- HR.dummy[train.i, ] %>% select(-left) %>% as.matrix()
+train.df     <- HR.dummy[train.i, ] 
+train.matrix <- train.df %>% select(-left) %>% as.matrix()
 # train.matrix %>% str
 train.label  <- HR.dummy[train.i, ]$left
 train.xgb.DMatrix <- xgb.DMatrix(train.matrix, label = train.label)
@@ -86,7 +87,8 @@ train.label
 ```
 
 ```r
-test.matrix <- HR.dummy[test.i, ] %>% select(-left) %>% as.matrix()
+test.df     <- HR.dummy[test.i, ] 
+test.matrix <- test.df %>% select(-left) %>% as.matrix()
 # test.matrix %>% str
 test.label  <- HR.dummy[test.i, ]$left
 test.xgb.DMatrix <- xgb.DMatrix(test.matrix, label = test.label)
@@ -225,10 +227,12 @@ res <- list(
   data = list(
     original = HR.dummy,
     train = list(
+      dummy.data.frame = train.df,
       matrix = train.matrix,
       label  = train.label
     ),
     test = list(
+      dummy.data.frame = test.df,
       matrix = test.matrix,
       label  = test.label
     )
