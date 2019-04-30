@@ -139,6 +139,8 @@ ggsave(ggp.varRes, filename = "./output/image.files/050_pdp-ale_shap.png", width
 
 # SHAP contribution dependency plots
 
+**According to man(xgb.plot.shap)::Detail**
+
 Visualizing the SHAP feature contribution to prediction dependencies on feature value.
 
 These scatterplots represent how SHAP feature contributions depend of feature values. The similarity to partial dependency plots is that they also give an idea for how feature values affect predictions. However, in partial dependency plots, we usually see marginal dependencies of model prediction on feature value, while SHAP contribution dependency plots display the estimated contributions of a feature to model prediction for each individual case.

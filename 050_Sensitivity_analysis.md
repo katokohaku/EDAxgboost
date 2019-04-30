@@ -54,7 +54,7 @@ train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 ```
 
 ```
-[19:08:11] 4999x18 matrix with 89982 entries loaded from ./middle/train.xgbDMatrix
+[19:13:52] 4999x18 matrix with 89982 entries loaded from ./middle/train.xgbDMatrix
 ```
 
 ```r
@@ -64,7 +64,7 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 ```
 
 ```
-[19:08:11] 10000x18 matrix with 180000 entries loaded from ./middle/test.xgbDMatrix
+[19:13:52] 10000x18 matrix with 180000 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Marginal Response for a Single Variable
 
@@ -187,6 +187,8 @@ ggsave(ggp.varRes, filename = "./output/image.files/050_pdp-ale_shap.png", width
 
 
 # SHAP contribution dependency plots
+
+**According to man(xgb.plot.shap)::Detail**
 
 Visualizing the SHAP feature contribution to prediction dependencies on feature value.
 
