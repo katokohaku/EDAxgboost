@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: rule extraction from xgboost model"
-date: "2019/04/29"
+date: "2019/04/30"
 output:
   html_document:
     fig_caption: yes
@@ -45,7 +45,7 @@ require(DALEX)
 
 ```r
 loaded.obs  <- readRDS("./middle/data_and_model.Rds")
-
+# loaded.obs %>% str
 model.xgb   <- loaded.obs$model$xgb 
 
 train.label <- loaded.obs$data$train$label
@@ -54,7 +54,7 @@ train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 ```
 
 ```
-[22:02:24] 4999x18 matrix with 89982 entries loaded from ./middle/train.xgbDMatrix
+[19:08:11] 4999x18 matrix with 89982 entries loaded from ./middle/train.xgbDMatrix
 ```
 
 ```r
@@ -64,9 +64,11 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 ```
 
 ```
-[22:02:24] 10000x18 matrix with 180000 entries loaded from ./middle/test.xgbDMatrix
+[19:08:11] 10000x18 matrix with 180000 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Marginal Response for a Single Variable
+
+Target features are filterd using `xgb.importance()`
 
 
 ```r
@@ -107,18 +109,49 @@ target.feature
 [4] "last_evaluation"      "average_montly_hours"
 ```
 
-## Partial Dependence Plots (PDP)
+##  ICE + PDP
+
+individual conditional expectation (ICE) & Partial Dependence Plots (PDP)
 
 
 ```r
+# install.packages("pdp", dependencies = TRUE)
+require(pdp)
+```
+
+```
+Loading required package: pdp
+```
+
+```
+
+Attaching package: 'pdp'
+```
+
+```
+The following object is masked from 'package:purrr':
+
+    partial
+```
+
+```r
+sub.sample <- sample(NROW(test.matrix), 500)
+sub.matrix <- test.matrix[sub.sample, ]
+sub.label  <- test.label[sub.sample]
+
 plot.pdps <- list()
 for(feature.name in target.feature){
-  pdp <- variable_response(explainer.xgb,
-                           variable =  feature.name,
-                           type = "pdp")
-  plot.pdps[[feature.name]] <- plot(pdp) + ggtitle(feature.name)
+  plot.pdps[[feature.name]] <- pdp::partial(
+    model.xgb, 
+    pred.var = feature.name,
+    train    = sub.matrix, 
+    plot  = TRUE, 
+    rug   = TRUE,
+    ice   = TRUE, 
+    alpha = 0.2,
+    plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
 }
-plot.pdps[[1]] 
+plot.pdps[[1]]
 ```
 
 ![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
@@ -131,8 +164,8 @@ plot.ales <- list()
 for(feature.name in target.feature){
   ale <- variable_response(explainer.xgb,
                            variable =  feature.name,
-                           type = "ale")
-  plot.ales[[feature.name]] <- plot(ale) + ggtitle(feature.name)
+                           type = "ale", labels = NULL)
+  plot.ales[[feature.name]] <- plot(ale) + theme(legend.position = 'none')# + ggtitle(feature.name)
 }
 plot.ales[[1]] 
 ```
@@ -143,13 +176,14 @@ plot.ales[[1]]
 
 
 ```r
-for(feature.name in target.feature){
-gridExtra::grid.arrange(plot.pdps[[feature.name]], 
-                        plot.ales[[feature.name]], ncol=2)
-}
+ggp.varRes <- gridExtra::grid.arrange(grobs = c(plot.pdps, plot.ales), nrow = 2)
 ```
 
-![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-3-1.png)<!-- -->![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-3-2.png)<!-- -->![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-3-3.png)<!-- -->![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-3-4.png)<!-- -->![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-3-5.png)<!-- -->
+![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+
+```r
+ggsave(ggp.varRes, filename = "./output/image.files/050_pdp-ale_shap.png", width = 12, height = 4)
+```
 
 
 # SHAP contribution dependency plots
@@ -164,14 +198,20 @@ Note: SHAP contributions are shown on the scale of model margin. E.g., for a log
 
 
 ```r
-xgb.plot.shap(data  = train.matrix,
+png(filename = "./output/image.files/050_SHAP.png", width = 1200, height = 400, pointsize = 24)
+shap <- xgb.plot.shap(data  = train.matrix,
               model = model.xgb, 
-              # trees = trees0, 
-              # target_class = 1, 
-              # plot_loess = FALSE,
-              top_n = 6,
-              n_col = 2, col = col, pch = 16, pch_NA = 17)
+              # sabsumple = 300,
+              top_n = 5,
+              n_col = 5, col = col, pch = 7, pch_NA = 17)
+dev.off()
 ```
 
-![](050_Sensitivity_analysis_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+```
+png 
+  2 
+```
+
+![SHAP  contribution dependency plots](./output/image.files/050_SHAP.png)
+
 

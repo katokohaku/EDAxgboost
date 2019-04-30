@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "measure performance & feature importance of xgboost model"
-date: "2019/04/26"
+date: "2019/04/30"
 output:
   html_document:
     fig_caption: yes
@@ -51,7 +51,7 @@ train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 ```
 
 ```
-[23:36:01] 4999x18 matrix with 89982 entries loaded from ./middle/train.xgbDMatrix
+[16:48:20] 4999x18 matrix with 89982 entries loaded from ./middle/train.xgbDMatrix
 ```
 
 ```r
@@ -61,7 +61,7 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 ```
 
 ```
-[23:36:01] 10000x18 matrix with 180000 entries loaded from ./middle/test.xgbDMatrix
+[16:48:20] 10000x18 matrix with 180000 entries loaded from ./middle/test.xgbDMatrix
 ```
 
 # Predictive performances with test set.
@@ -107,11 +107,18 @@ prediction    0    1
 ```r
 test.roc  <- roc(predictions = test.pred, 
                  labels      = as.factor(test.label))
+png("./output/image.files/010_AUCROC_fullmodel.png", width = 480, height = 480)
 plot(test.roc, col = "red", lwd = 2,
      main = sprintf("test set AUCROC = %.03f", auc(test.roc)))
+dev.off()
 ```
 
-![](010_measure_performance_and_varImp_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
+```
+png 
+  2 
+```
+
+![predictive performance (AUCROC)](./output/image.files/010_AUCROC_fullmodel.png)
 
 # feature importance
 
@@ -144,10 +151,16 @@ var.imp %>% mutate_if(is.numeric, round, digits = 4)
 ```
 
 ```r
-xgb.ggplot.importance(var.imp)
+ggp.var.imp <- xgb.ggplot.importance(var.imp)
+ggsave(ggp.var.imp, filename = "./output/image.files/010_importance_xgb.png")
 ```
 
-![](010_measure_performance_and_varImp_files/figure-html/xgb.importance-1.png)<!-- -->
+```
+Saving 7 x 5 in image
+```
+
+![structure based importance](./output/image.files/010_importance_xgb.png)
+
 
 ## based on permutation 
 
@@ -159,9 +172,12 @@ explainer.xgb <- DALEX::explain(model.xgb,
                                 label = "xgboost")
 
 vd.xgb <- variable_importance(explainer.xgb, type = "raw")
-plot(vd.xgb)
+ggp.vd.xgb <- plot(vd.xgb)
+ggsave(ggp.vd.xgb, filename = "./output/image.files/010_importance_perm.png")
 ```
 
-![](010_measure_performance_and_varImp_files/figure-html/explainer.DALEX-1.png)<!-- -->
+```
+Saving 7 x 5 in image
+```
 
-
+![permutation based importance](./output/image.files/010_importance_perm.png)

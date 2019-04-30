@@ -85,24 +85,38 @@ xgb.model.dt.tree(model = model.xgb) %>%
 
 ## Project all trees on one tree and plot it
 
-```{r, fig.height=8, fig.width=8}
-xgb.plot.multi.trees(model = model.xgb)
+```{r}
+# install.packages("rsvg", dependencies = TRUE)
+# devtools::install_github('rich-iannone/DiagrammeRsvg')
+                          
+ggp.multi.tree <- xgb.plot.multi.trees(model = model.xgb, render=FALSE)
+DiagrammeR::export_graph(ggp.multi.tree, "./output/image.files/020_summarise_xgbTrees.pdf",
+                         width=960, height=720)
 
 ```
+
+[See pdf file](./output/image.files/020_summarise_xgbTrees.pdf)
 
 # Plot a boosted tree model
 
 ## First tree
 
 ```{r, fig.height=8, fig.width=8}
-xgb.plot.tree(model = model.xgb, trees = 0)
+ggp.1st.tree <- xgb.plot.tree(model = model.xgb, trees = 0)
+DiagrammeR::export_graph(ggp.multi.tree, "./output/image.files/020_xgb_1st_tree.pdf",
+                         width=960, height=720)
 
 ```
+
+[See pdf file](./output/image.files/020_xgb_1st_tree.pdf)
 
 ## Following booster
 
 ```{r, fig.height=8, fig.width=8}
-xgb.plot.tree(model = model.xgb, trees = 1)
+ggp.2nd.tree <- xgb.plot.tree(model = model.xgb, trees = 0)
+DiagrammeR::export_graph(ggp.multi.tree, "./output/image.files/020_xgb_2nd_tree.pdf",
+                         width=960, height=720)
 
 ```
 
+[See pdf file](./output/image.files/020_xgb_2nd_tree.pdf)

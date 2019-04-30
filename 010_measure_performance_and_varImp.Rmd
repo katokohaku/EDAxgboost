@@ -77,10 +77,14 @@ table(prediction = ifelse(test.pred > 0.5, 1, 0),
 
 test.roc  <- roc(predictions = test.pred, 
                  labels      = as.factor(test.label))
+png("./output/image.files/010_AUCROC_fullmodel.png", width = 480, height = 480)
 plot(test.roc, col = "red", lwd = 2,
      main = sprintf("test set AUCROC = %.03f", auc(test.roc)))
+dev.off()
 
 ```
+
+![predictive performance (AUCROC)](./output/image.files/010_AUCROC_fullmodel.png)
 
 # feature importance
 
@@ -93,9 +97,12 @@ var.imp <- xgb.importance(model = model.xgb,
                           feature_names = dimnames(train.xgb.DMatrix)[[2]])
 
 var.imp %>% mutate_if(is.numeric, round, digits = 4)
-xgb.ggplot.importance(var.imp)
-
+ggp.var.imp <- xgb.ggplot.importance(var.imp)
+ggsave(ggp.var.imp, filename = "./output/image.files/010_importance_xgb.png")
 ```
+
+![structure based importance](./output/image.files/010_importance_xgb.png)
+
 
 ## based on permutation 
 
@@ -106,7 +113,8 @@ explainer.xgb <- DALEX::explain(model.xgb,
                                 label = "xgboost")
 
 vd.xgb <- variable_importance(explainer.xgb, type = "raw")
-plot(vd.xgb)
+ggp.vd.xgb <- plot(vd.xgb)
+ggsave(ggp.vd.xgb, filename = "./output/image.files/010_importance_perm.png")
 ```
 
-
+![permutation based importance](./output/image.files/010_importance_perm.png)

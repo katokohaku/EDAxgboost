@@ -57,7 +57,7 @@ require(DALEX)
 
 ```{r load.model.and.data}
 loaded.obs  <- readRDS("./middle/data_and_model.Rds")
-
+# loaded.obs %>% str
 model.xgb   <- loaded.obs$model$xgb 
 
 train.label <- loaded.obs$data$train$label
@@ -70,6 +70,8 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 
 ```
 # Marginal Response for a Single Variable
+
+Target features are filterd using `xgb.importance()`
 
 ```{r explainer.DALEX}
 explainer.xgb <- DALEX::explain(model.xgb, 
@@ -85,17 +87,31 @@ target.feature <- var.imp$Feature %>% head(5)
 target.feature
 ```
 
-## Partial Dependence Plots (PDP)
+##  ICE + PDP
+
+individual conditional expectation (ICE) & Partial Dependence Plots (PDP)
 
 ```{r}
+# install.packages("pdp", dependencies = TRUE)
+require(pdp)
+
+sub.sample <- sample(NROW(test.matrix), 500)
+sub.matrix <- test.matrix[sub.sample, ]
+sub.label  <- test.label[sub.sample]
+
 plot.pdps <- list()
 for(feature.name in target.feature){
-  pdp <- variable_response(explainer.xgb,
-                           variable =  feature.name,
-                           type = "pdp")
-  plot.pdps[[feature.name]] <- plot(pdp) + ggtitle(feature.name)
+  plot.pdps[[feature.name]] <- pdp::partial(
+    model.xgb, 
+    pred.var = feature.name,
+    train    = sub.matrix, 
+    plot  = TRUE, 
+    rug   = TRUE,
+    ice   = TRUE, 
+    alpha = 0.2,
+    plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
 }
-plot.pdps[[1]] 
+plot.pdps[[1]]
 
 ```
 
@@ -106,8 +122,8 @@ plot.ales <- list()
 for(feature.name in target.feature){
   ale <- variable_response(explainer.xgb,
                            variable =  feature.name,
-                           type = "ale")
-  plot.ales[[feature.name]] <- plot(ale) + ggtitle(feature.name)
+                           type = "ale", labels = NULL)
+  plot.ales[[feature.name]] <- plot(ale) + theme(legend.position = 'none')# + ggtitle(feature.name)
 }
 plot.ales[[1]] 
 
@@ -115,11 +131,9 @@ plot.ales[[1]]
 
 
 
-```{r}
-for(feature.name in target.feature){
-gridExtra::grid.arrange(plot.pdps[[feature.name]], 
-                        plot.ales[[feature.name]], ncol=2)
-}
+```{r, results="hide"}
+ggp.varRes <- gridExtra::grid.arrange(grobs = c(plot.pdps, plot.ales), nrow = 2)
+ggsave(ggp.varRes, filename = "./output/image.files/050_pdp-ale_shap.png", width = 12, height = 4)
 ```
 
 
@@ -133,14 +147,16 @@ When plot_loess = TRUE is set, feature values are rounded to 3 significant digit
 
 Note: SHAP contributions are shown on the scale of model margin. E.g., for a logistic binomial objective, the margin is prediction before a sigmoidal transform into probability-like values. Also, since SHAP stands for "SHapley Additive exPlanation" (model prediction = sum of SHAP contributions for all features + bias), depending on the objective used, transforming SHAP contributions for a feature from the marginal to the prediction space is not necessarily a meaningful thing to do.
 
-```{r, fig.height=8, fig.width=8}
-xgb.plot.shap(data  = train.matrix,
+```{r, fig.height=4, fig.width=8}
+png(filename = "./output/image.files/050_SHAP.png", width = 1200, height = 400, pointsize = 24)
+shap <- xgb.plot.shap(data  = train.matrix,
               model = model.xgb, 
-              # trees = trees0, 
-              # target_class = 1, 
-              # plot_loess = FALSE,
-              top_n = 6,
-              n_col = 2, col = col, pch = 16, pch_NA = 17)
-
+              # sabsumple = 300,
+              top_n = 5,
+              n_col = 5, col = col, pch = 7, pch_NA = 17)
+dev.off()
 ```
+
+![SHAP  contribution dependency plots](./output/image.files/050_SHAP.png)
+
 
