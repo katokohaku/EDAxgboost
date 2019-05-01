@@ -215,8 +215,7 @@ Best iteration:
 model.xgb <- xgb.train(params  = params, 
                        verbose = 1,
                        data    = train.xgb.DMatrix,
-                       nrounds = cv$best_iteration,
-                       nfold   = 5)
+                       nrounds = cv$best_iteration)
 ```
 
 # Save data and model
