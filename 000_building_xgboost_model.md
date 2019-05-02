@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "building xgboost model"
-date: "2019/04/30"
+date: "2019/05/01"
 output:
   html_document:
     fig_caption: yes
@@ -24,6 +24,7 @@ editor_options:
 
 
 ```r
+install.packages("table1",      dependencies = TRUE)
 install.packages("breakDown",   dependencies = TRUE)
 install.packages("fastDummies", dependencies = TRUE)
 install.packages("xgboost",     dependencies = TRUE)
@@ -40,9 +41,34 @@ require(xgboost)
 require(tidyverse)
 require(AUC)
 require(caret)
+
+require(table1)
 ```
 
-# Data preparation
+# Data 
+
+according to `help(breakDown::HR_data)`
+
+## Description
+
+A dataset from Kaggle competition Human Resources Analytics: Why are our best and most experienced employees leaving prematurely?
+
+* `satisfaction_level` Level of satisfaction (0-1)
+* `last_evaluation` Time since last performance evaluation (in Years)
+* `number_project` Number of projects completed while at work
+* `average_montly_hours` Average monthly hours at workplace
+* `time_spend_company` Number of years spent in the company
+* `Work_accident` Whether the employee had a workplace accident
+* `left` Whether the employee left the workplace or not (1 or 0) Factor
+* `promotion_last_5years` Whether the employee was promoted in the last five years
+* `sales` Department in which they work for
+* `salary` Relative level of salary (high)
+
+## Source
+
+Dataset HR-analytics from https://www.kaggle.com
+
+
 
 
 ```r
@@ -63,6 +89,287 @@ HR_data %>% str
  $ sales                : Factor w/ 10 levels "accounting","hr",..: 8 8 8 8 8 8 8 8 8 8 ...
  $ salary               : Factor w/ 3 levels "high","low","medium": 2 3 3 2 2 2 2 2 2 2 ...
 ```
+
+
+```r
+table1(~ left +
+         satisfaction_level + last_evaluation + number_project + 
+         average_montly_hours + time_spend_company + 
+         Work_accident + promotion_last_5years 
+       | left, data = HR_data)
+```
+
+<!--html_preserve--><div class="Rtable1"><table class="Rtable1">
+<thead>
+<tr>
+<th class='rowlabel firstrow lastrow'></th>
+<th class='firstrow lastrow'><span class='stratlabel'>0<br><span class='stratn'>(n=11428)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>1<br><span class='stratn'>(n=3571)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>Overall<br><span class='stratn'>(n=14999)</span></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>left</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>0.00 (0.00)</td>
+<td>1.00 (0.00)</td>
+<td>0.238 (0.426)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>0.00 [0.00, 0.00]</td>
+<td class='lastrow'>1.00 [1.00, 1.00]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>satisfaction_level</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>0.667 (0.217)</td>
+<td>0.440 (0.264)</td>
+<td>0.613 (0.249)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>0.690 [0.120, 1.00]</td>
+<td class='lastrow'>0.410 [0.0900, 0.920]</td>
+<td class='lastrow'>0.640 [0.0900, 1.00]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>last_evaluation</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>0.715 (0.162)</td>
+<td>0.718 (0.198)</td>
+<td>0.716 (0.171)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>0.710 [0.360, 1.00]</td>
+<td class='lastrow'>0.790 [0.450, 1.00]</td>
+<td class='lastrow'>0.720 [0.360, 1.00]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>number_project</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>3.79 (0.980)</td>
+<td>3.86 (1.82)</td>
+<td>3.80 (1.23)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>4.00 [2.00, 6.00]</td>
+<td class='lastrow'>4.00 [2.00, 7.00]</td>
+<td class='lastrow'>4.00 [2.00, 7.00]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>average_montly_hours</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>199 (45.7)</td>
+<td>207 (61.2)</td>
+<td>201 (49.9)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>198 [96.0, 287]</td>
+<td class='lastrow'>224 [126, 310]</td>
+<td class='lastrow'>200 [96.0, 310]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>time_spend_company</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>3.38 (1.56)</td>
+<td>3.88 (0.978)</td>
+<td>3.50 (1.46)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>3.00 [2.00, 10.0]</td>
+<td class='lastrow'>4.00 [2.00, 6.00]</td>
+<td class='lastrow'>3.00 [2.00, 10.0]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>Work_accident</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>0.175 (0.380)</td>
+<td>0.0473 (0.212)</td>
+<td>0.145 (0.352)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>promotion_last_5years</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>Mean (SD)</td>
+<td>0.0263 (0.160)</td>
+<td>0.00532 (0.0728)</td>
+<td>0.0213 (0.144)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>Median [Min, Max]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+<td class='lastrow'>0.00 [0.00, 1.00]</td>
+</tr>
+</tbody>
+</table>
+</div><!--/html_preserve-->
+
+
+```r
+table1(~ factor(sales) + factor(salary)
+       | left, data = HR_data)
+```
+
+<!--html_preserve--><div class="Rtable1"><table class="Rtable1">
+<thead>
+<tr>
+<th class='rowlabel firstrow lastrow'></th>
+<th class='firstrow lastrow'><span class='stratlabel'>0<br><span class='stratn'>(n=11428)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>1<br><span class='stratn'>(n=3571)</span></span></th>
+<th class='firstrow lastrow'><span class='stratlabel'>Overall<br><span class='stratn'>(n=14999)</span></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>factor(sales)</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>accounting</td>
+<td>563 (4.9%)</td>
+<td>204 (5.7%)</td>
+<td>767 (5.1%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>hr</td>
+<td>524 (4.6%)</td>
+<td>215 (6.0%)</td>
+<td>739 (4.9%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>IT</td>
+<td>954 (8.3%)</td>
+<td>273 (7.6%)</td>
+<td>1227 (8.2%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>management</td>
+<td>539 (4.7%)</td>
+<td>91 (2.5%)</td>
+<td>630 (4.2%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>marketing</td>
+<td>655 (5.7%)</td>
+<td>203 (5.7%)</td>
+<td>858 (5.7%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>product_mng</td>
+<td>704 (6.2%)</td>
+<td>198 (5.5%)</td>
+<td>902 (6.0%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>RandD</td>
+<td>666 (5.8%)</td>
+<td>121 (3.4%)</td>
+<td>787 (5.2%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>sales</td>
+<td>3126 (27.4%)</td>
+<td>1014 (28.4%)</td>
+<td>4140 (27.6%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>support</td>
+<td>1674 (14.6%)</td>
+<td>555 (15.5%)</td>
+<td>2229 (14.9%)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>technical</td>
+<td class='lastrow'>2023 (17.7%)</td>
+<td class='lastrow'>697 (19.5%)</td>
+<td class='lastrow'>2720 (18.1%)</td>
+</tr>
+<tr>
+<td class='rowlabel firstrow'><span class='varlabel'>factor(salary)</span></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+<td class='firstrow'></td>
+</tr>
+<tr>
+<td class='rowlabel'>high</td>
+<td>1155 (10.1%)</td>
+<td>82 (2.3%)</td>
+<td>1237 (8.2%)</td>
+</tr>
+<tr>
+<td class='rowlabel'>low</td>
+<td>5144 (45.0%)</td>
+<td>2172 (60.8%)</td>
+<td>7316 (48.8%)</td>
+</tr>
+<tr>
+<td class='rowlabel lastrow'>medium</td>
+<td class='lastrow'>5129 (44.9%)</td>
+<td class='lastrow'>1317 (36.9%)</td>
+<td class='lastrow'>6446 (43.0%)</td>
+</tr>
+</tbody>
+</table>
+</div><!--/html_preserve-->
+# Preparation
+
+## create dummy cols
+
 
 ```r
 HR.dummy <- HR_data %>% 
@@ -100,15 +407,16 @@ test.label
    0    1 
 7627 2373 
 ```
+# build XGBoost model
 
-# parameter settings for XGBoost
+## parameter settings
 
 see. https://xgboost.readthedocs.io/en/latest/parameter.html
 
 
 ```r
 params <- list(
-  booster      = "gbtree", # MUST be set booster = "gbtree" to build explainer
+  booster      = "gbtree", # MUST be set booster = "gbtree" to build xgbExplainer
   objective    = "binary:logistic",
   eval_metric  = "auc",    # instead of "logloss", "error" and "aucpr"
   max_depth = 5,
@@ -120,6 +428,8 @@ params <- list(
   gamma = 0
 ) 
 ```
+
+## search optimal number of booster with cross-validation
 
 
 ```r
