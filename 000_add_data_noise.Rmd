@@ -1,0 +1,158 @@
+---
+author: "Satoshi Kato"
+title: "add noise to data"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    keep_md: yes
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = FALSE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("tidyverse",   dependencies = TRUE)
+install.packages("table1",      dependencies = TRUE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(data.table)
+require(table1)
+
+```
+
+# Purpose
+
+Make dataset noisy according to: https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
+
+## Description
+
+according to `help(breakDown::HR_data)`, 
+
+A dataset from Kaggle competition Human Resources Analytics: Why are our best and most experienced employees leaving prematurely?
+
+* `satisfaction_level` Level of satisfaction (0-1)
+* `last_evaluation` Time since last performance evaluation (in Years)
+* `number_project` Number of projects completed while at work
+* `average_montly_hours` Average monthly hours at workplace
+* `time_spend_company` Number of years spent in the company
+* `Work_accident` Whether the employee had a workplace accident
+* `left` Whether the employee left the workplace or not (1 or 0) Factor
+* `promotion_last_5years` Whether the employee was promoted in the last five years
+* `sales` Department in which they work for
+* `salary` Relative level of salary (high)
+
+## Source
+
+Original dataset HR-analytics is from https://www.kaggle.com
+
+Source data in this sample is from : https://github.com/ryankarlos/Human-Resource-Analytics-Kaggle-Dataset/tree/master/Original_Kaggle_Dataset
+
+```{r}
+full = fread('./input/HR_comma_sep.csv', stringsAsFactors = T)
+
+```
+
+```{r}
+table1(~ left +
+         satisfaction_level + last_evaluation + number_project + 
+         average_montly_hours + time_spend_company + 
+         Work_accident + promotion_last_5years 
+       | left, data = full)
+
+```
+
+```{r}
+table1(~ factor(sales) + factor(salary)
+       | left, data = full)
+
+```
+
+# Shuffle rows
+
+```{r}
+full = full[sample(.N)]
+
+```
+ 
+ # add Random Noise (to continuous feature)
+ 
+```{r}
+
+tmp_std = sd(full[,satisfaction_level])
+full[,satisfaction_level:=satisfaction_level + runif(.N,-tmp_std,tmp_std)]
+full[,satisfaction_level:=satisfaction_level - min(satisfaction_level)]
+full[,satisfaction_level:=satisfaction_level / max(satisfaction_level)]
+
+tmp_std = sd(full[,last_evaluation])
+full[,last_evaluation:=last_evaluation + runif(.N,-tmp_std,tmp_std) ]
+full[,last_evaluation:=last_evaluation - min(last_evaluation)]
+full[,last_evaluation:=last_evaluation / max(last_evaluation)]
+
+tmp_min = min(full[,number_project])
+tmp_std = sd(full[,number_project])
+full[,number_project:=number_project + sample(-ceiling(tmp_std):ceiling(tmp_std),.N, replace=T)]
+full[,number_project:=number_project - min(number_project) + tmp_min]
+
+tmp_min = min(full[,average_montly_hours])
+tmp_std = sd(full[,average_montly_hours])
+full[,average_montly_hours:=average_montly_hours + sample(-ceiling(tmp_std):ceiling(tmp_std),.N, replace=T)]
+full[,average_montly_hours:=average_montly_hours - min(average_montly_hours) + tmp_min]
+
+tmp_min = min(full[,time_spend_company])
+tmp_std = sd(full[,time_spend_company])
+full[,time_spend_company:=time_spend_company + sample(-ceiling(tmp_std):ceiling(tmp_std),.N, replace=T)]
+full[,time_spend_company:=time_spend_company - min(time_spend_company) + tmp_min]
+
+tmp_min = min(full[,number_project])
+tmp_std = sd(full[,number_project])
+full[,number_project:=number_project + sample(-ceiling(tmp_std):ceiling(tmp_std),.N, replace=T)]
+full[,number_project:=number_project - min(number_project) + tmp_min]
+
+```
+
+```{r}
+table1(~ left +
+         satisfaction_level + last_evaluation + number_project + 
+         average_montly_hours + time_spend_company + 
+         Work_accident + promotion_last_5years 
+       | left, data = full)
+
+```
+
+
+# Save data and model
+
+```{r save.object}
+write.csv(full, "./input/HR_shuffle_and_noise.csv", row.names = FALSE)
+
+```
+
+
