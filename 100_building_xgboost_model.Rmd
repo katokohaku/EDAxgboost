@@ -25,8 +25,8 @@ knitr::opts_knit$set(progress = TRUE,
                      verbose  = TRUE, 
                      root.dir = ".")
 
-knitr::opts_chunk$set(collapse = FALSE, 
-                      comment = "", 
+knitr::opts_chunk$set(collapse = TRUE, 
+                      comment = "#>", 
                       message = TRUE, 
                       warning = FALSE, 
                       include = TRUE,
@@ -79,9 +79,11 @@ table1(~ factor(sales) + factor(salary)
        | left, data = HR_data)
 
 ```
+
+
 # Preparation
 
-## create dummy cols
+## separate train / test
 
 ```{r data.prep}
 set.seed(1234567)

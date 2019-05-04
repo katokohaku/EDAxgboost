@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "rule extraction from xgboost model"
-date: "`r format(Sys.time(), '%Y/%m/%d')`"
+date: "2019/05/04"
 output:
   html_document:
     fig_caption: yes
@@ -20,22 +20,10 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_knit$set(progress = TRUE, 
-                     verbose  = TRUE, 
-                     root.dir = ".")
 
-knitr::opts_chunk$set(collapse = TRUE, 
-                      comment = "", 
-                      message = TRUE, 
-                      warning = FALSE, 
-                      include = TRUE,
-                      echo    = TRUE)
 
-set.seed(1)
-```
 
-```{r install.requirements, eval = FALSE}
+```r
 install.packages("devtools", dependencies = TRUE)
 devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
 
@@ -43,7 +31,8 @@ install.packages("ggridges", dependencies = TRUE)
 
 ```
 
-```{r require.packages, message=FALSE}
+
+```r
 require(tidyverse)
 require(magrittr)
 require(data.table)
@@ -51,12 +40,12 @@ require(xgboost)
 require(xgboostExplainer)
 require(ggridges)
 
-
 ```
 
 # Preparation 
 
-```{r load.model.and.data}
+
+```r
 loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 
 model.xgb   <- loaded.obs$model$xgb 
@@ -68,7 +57,6 @@ train.xgb.DMatrix <- xgb.DMatrix(train.matrix, label = train.label, missing = NA
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
-
 ```
 
 # view rules
@@ -78,7 +66,8 @@ test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
 see https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
 
 
-```{r, results="hide", eval=FALSE}
+
+```r
 explainer.xgb <-  buildExplainer(xgb.model    = model.xgb, 
                                  trainingData = train.xgb.DMatrix, 
                                  type         = "binary",
@@ -87,14 +76,15 @@ explainer.xgb <-  buildExplainer(xgb.model    = model.xgb,
 saveRDS(explainer.xgb,file = "./middle/400_explainer_xgb.Rds")
 ```
 
-```{r}
-explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
 
+```r
+explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
 ```
 
 ## extract explaination path
 
-```{r, eval = FALSE}
+
+```r
 xgb.breakdown <- explainPredictions(xgb.model = model.xgb,
                                     explainer = explainer.xgb,
                                     data      = train.xgb.DMatrix)
@@ -102,18 +92,19 @@ saveRDS(xgb.breakdown, file = "./middle/400_xgb_breakdown.Rds")
 
 ```
 
-```{r, results="hide", message=FALSE}
+
+```r
 xgb.breakdown <- readRDS("./middle/400_xgb_breakdown.Rds")
 
 weight     <- rowSums(xgb.breakdown)
 prediction <- 1/(1 + exp(-weight))
-
 ```
 
 
 ## explain single observation
 
-```{r, results="hide", message=FALSE, eval = FALSE}
+
+```r
 sw <- showWaterfall(
   idx = 1,
   xgb.model   = model.xgb, 
@@ -135,8 +126,10 @@ ggsave(sw, filename = "output/image.files/400_explain_single_obs.png")
 according to :
 http://jmonlong.github.io/Hippocamplus/2017/12/02/tsne-and-clustering/
 
-```{r}
+
+```r
 require(Rtsne)
+Loading required package: Rtsne
 # xgb.breakdown %>% str
 
 xgb.breakdown.tsne <- xgb.breakdown %>% 
@@ -144,6 +137,21 @@ xgb.breakdown.tsne <- xgb.breakdown %>%
   Rtsne(perplexity = 300, check_duplicates = FALSE)
 
 xgb.breakdown.tsne %>% str
+List of 14
+ $ N                  : int 4000
+ $ Y                  : num [1:4000, 1:2] -13.83 -9.11 -3.24 4.22 -9.36 ...
+ $ costs              : num [1:4000] 4.70e-05 3.55e-05 1.81e-04 7.50e-05 5.09e-05 ...
+ $ itercosts          : num [1:20] 59.4 56 55.9 55.5 55.6 ...
+ $ origD              : int 9
+ $ perplexity         : num 300
+ $ theta              : num 0.5
+ $ max_iter           : num 1000
+ $ stop_lying_iter    : int 250
+ $ mom_switch_iter    : int 250
+ $ momentum           : num 0.5
+ $ final_momentum     : num 0.8
+ $ eta                : num 200
+ $ exaggeration_factor: num 12
 
 mapping.tsne <- data.frame(
   id     = 1:length(prediction),
@@ -153,26 +161,38 @@ mapping.tsne <- data.frame(
   weight = weight)
 ```
 
-```{r}
+
+```r
 mapping.tsne %>% 
   ggplot(aes(x = tsne1, y = tsne2, colour = prediction)) + 
     geom_point(alpha = 0.3) + theme_bw() +
   scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
 ```
+
+![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 ## Hierarchical clustering
 
-```{r clustering}
+
+```r
 xgb.breakdown.tsne.hc <- mapping.tsne %>% 
   select(-id) %>% 
   as.matrix() %>% 
   dist() %>% 
   hclust()
 xgb.breakdown.tsne.hc
+
+Call:
+hclust(d = .)
+
+Cluster method   : complete 
+Distance         : euclidean 
+Number of objects: 4000 
 ```
 
 ### explore cut.off for cutree
 
-```{r}
+
+```r
 cut.off = 5
 
 png(filename = "./output/image.files/400_hclust_rules.png",
@@ -182,12 +202,16 @@ xgb.breakdown.tsne.hc %>%
   plot(horiz = TRUE)
 abline(v = cut.off, col = "red", lwd = 2, lty = 3)
 dev.off()
+png 
+  2 
 ```
 ![](./output/image.files/400_hclust_rules.png)
 
-```{r}
+
+```r
 # install.packages("ggrepel", dependencies = TRUE)
 require(ggrepel)
+Loading required package: ggrepel
 
 mapping.tsne$hclust <- xgb.breakdown.tsne.hc %>%
   cutree(h = cut.off) %>%
@@ -197,6 +221,7 @@ hc.cent <- mapping.tsne %>%
   group_by(hclust) %>%
   select(tsne1, tsne2) %>% 
   summarize_all(mean)
+Adding missing grouping variables: `hclust`
 
 mapping.tsne %>% 
   ggplot(aes(x = tsne1, y = tsne2, colour = hclust)) + 
@@ -206,10 +231,13 @@ mapping.tsne %>%
   guides(colour = FALSE)
 ```
 
+![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+
 
 ## View rules in several group
 
-```{r, eval=FALSE}
+
+```r
 hclust.id = 1
 sample.n  = 6
 
@@ -237,7 +265,8 @@ ggsave(ggp.sw, filename = fn, height = 6)
 
 ![](./output/image.files/400_rules_cl1.png)
 
-```{r, eval=FALSE}
+
+```r
 hclust.id = 17
 sample.n  = 6
 

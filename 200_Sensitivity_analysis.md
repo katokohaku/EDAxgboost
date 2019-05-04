@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: rule extraction from xgboost model"
-date: "2019/05/03"
+date: "2019/05/04"
 output:
   html_document:
     fig_caption: yes
@@ -25,6 +25,7 @@ editor_options:
 
 ```r
 install.packages("pdp", dependencies = TRUE)
+
 ```
 
 
@@ -47,20 +48,12 @@ model.xgb   <- loaded.obs$model$xgb
 train.label <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
 train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
-```
+#> [16:55:30] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
 
-```
-[15:47:21] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
-```
-
-```r
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
-```
-
-```
-[15:47:21] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
+#> [16:55:30] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Target features
 
@@ -77,22 +70,16 @@ var.imp <- xgb.importance(model = model.xgb,
                           feature_names = dimnames(train.xgb.DMatrix)[[2]])
 
 var.imp %>% mutate_if(is.numeric, round, digits = 4)
-```
-
-```
-                Feature   Gain  Cover Frequency
-1    satisfaction_level 0.3111 0.2191    0.2150
-2       last_evaluation 0.2117 0.1746    0.2066
-3  average_montly_hours 0.1890 0.1740    0.2112
-4    time_spend_company 0.1399 0.1621    0.1186
-5        number_project 0.0525 0.0754    0.1133
-6                salary 0.0487 0.0884    0.0446
-7         Work_accident 0.0293 0.0474    0.0212
-8                 sales 0.0160 0.0464    0.0638
-9 promotion_last_5years 0.0018 0.0126    0.0057
-```
-
-```r
+#>                 Feature   Gain  Cover Frequency
+#> 1    satisfaction_level 0.3111 0.2191    0.2150
+#> 2       last_evaluation 0.2117 0.1746    0.2066
+#> 3  average_montly_hours 0.1890 0.1740    0.2112
+#> 4    time_spend_company 0.1399 0.1621    0.1186
+#> 5        number_project 0.0525 0.0754    0.1133
+#> 6                salary 0.0487 0.0884    0.0446
+#> 7         Work_accident 0.0293 0.0474    0.0212
+#> 8                 sales 0.0160 0.0464    0.0638
+#> 9 promotion_last_5years 0.0018 0.0126    0.0057
 target.feature <- var.imp$Feature %>% head(6)
 ```
 In this example, target features are satisfaction_level, last_evaluation, average_montly_hours, time_spend_company, number_project, salary
@@ -172,11 +159,8 @@ shap <- xgb.plot.shap(data  = train.matrix,
               top_n = 6,
               n_col = 6, col = col, pch = 7, pch_NA = 17)
 dev.off()
-```
-
-```
-png 
-  2 
+#> png 
+#>   2
 ```
 
 ![SHAP  contribution dependency plots](./output/image.files/200_SHAP.png)
