@@ -66,7 +66,7 @@ train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
-test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
+test.xgb.DMatrix  <- xgb.DMatrix(test.matrix)
 
 ```
 
@@ -85,38 +85,54 @@ xgb.model.dt.tree(model = model.xgb) %>%
 
 ## Project all trees on one tree and plot it
 
-```{r}
-# install.packages("rsvg", dependencies = TRUE)
-# devtools::install_github('rich-iannone/DiagrammeRsvg')
-                          
-ggp.multi.tree <- xgb.plot.multi.trees(model = model.xgb, render=FALSE)
-DiagrammeR::export_graph(ggp.multi.tree, "./output/image.files/020_summarise_xgbTrees.pdf",
-                         width=960, height=720)
-
-```
-
-[See pdf file](./output/image.files/020_summarise_xgbTrees.pdf)
 
 # Plot a boosted tree model
 
 ## First tree
 
 ```{r, fig.height=8, fig.width=8}
-ggp.1st.tree <- xgb.plot.tree(model = model.xgb, trees = 0)
-DiagrammeR::export_graph(ggp.multi.tree, "./output/image.files/020_xgb_1st_tree.pdf",
-                         width=960, height=720)
+feature.names <- dimnames(test.xgb.DMatrix)[[2]]
+xgb.plot.tree(trees = 0,
+              #feature_names = feature.names,
+              model = model.xgb,
+              plot_width  = 800,
+              plot_height = 640)
 
 ```
-
-[See pdf file](./output/image.files/020_xgb_1st_tree.pdf)
 
 ## Following booster
 
 ```{r, fig.height=8, fig.width=8}
-ggp.2nd.tree <- xgb.plot.tree(model = model.xgb, trees = 0)
-DiagrammeR::export_graph(ggp.multi.tree, "./output/image.files/020_xgb_2nd_tree.pdf",
-                         width=960, height=720)
+xgb.plot.tree(trees = 1,
+              model = model.xgb,
+              plot_width  = 800,
+              plot_height = 640)
 
 ```
 
-[See pdf file](./output/image.files/020_xgb_2nd_tree.pdf)
+## Multi trees
+
+```{r, fig.height=8, fig.width=8}
+xgb.plot.tree(trees = 0:9,
+              model = model.xgb,
+              plot_width  = 800,
+              plot_height = 640)
+
+```
+
+## Multiple-in-one plot
+
+see: http://dmlc.ml/rstats/2016/03/10/xgboost.html
+
+This is done with the following observations:
+
+-  Almost all the trees in an ensemble model have the same shape. If the maximum depth is determined, this holds for all the binary trees.
+-  On each node there would be more than one feature that have appeared on this position. But we can describe it by the frequency of each feature thus make a frequenct table.
+
+```{r}
+xgb.plot.multi.trees(model = model.xgb, 
+                     render=TRUE,
+                     plot_width  = 800,
+                     plot_height = 640)
+
+```

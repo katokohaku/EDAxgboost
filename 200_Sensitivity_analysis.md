@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: rule extraction from xgboost model"
-date: "`r format(Sys.time(), '%Y/%m/%d')`"
+date: "2019/05/03"
 output:
   html_document:
     fig_caption: yes
@@ -20,38 +20,26 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_knit$set(progress = TRUE, 
-                     verbose  = TRUE, 
-                     root.dir = ".")
 
-knitr::opts_chunk$set(collapse = FALSE, 
-                      comment = "", 
-                      message = TRUE, 
-                      warning = FALSE, 
-                      include = TRUE,
-                      echo    = TRUE)
 
-set.seed(1)
-```
 
-```{r install.requirements, eval = FALSE}
+```r
 install.packages("pdp", dependencies = TRUE)
-
 ```
 
-```{r require.packages, message=FALSE}
+
+```r
 require(tidyverse)
 require(xgboost)
 
 require(pdp)
 require(DALEX)
-
 ```
 
 # Preparation (continued)
 
-```{r load.model.and.data}
+
+```r
 loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 # loaded.obs %>% str
 model.xgb   <- loaded.obs$model$xgb 
@@ -59,17 +47,27 @@ model.xgb   <- loaded.obs$model$xgb
 train.label <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
 train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
+```
 
+```
+[15:47:21] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
+```
+
+```r
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
+```
 
+```
+[15:47:21] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Target features
 
 Target features to watch feature responces are filterd using `xgb.importance()`
 
-```{r explainer.DALEX}
+
+```r
 explainer.xgb <- DALEX::explain(model.xgb, 
                                 data  = test.matrix, 
                                 y     = test.label, 
@@ -79,10 +77,25 @@ var.imp <- xgb.importance(model = model.xgb,
                           feature_names = dimnames(train.xgb.DMatrix)[[2]])
 
 var.imp %>% mutate_if(is.numeric, round, digits = 4)
-target.feature <- var.imp$Feature %>% head(6)
+```
 
 ```
-In this example, target features are `r target.feature`
+                Feature   Gain  Cover Frequency
+1    satisfaction_level 0.3111 0.2191    0.2150
+2       last_evaluation 0.2117 0.1746    0.2066
+3  average_montly_hours 0.1890 0.1740    0.2112
+4    time_spend_company 0.1399 0.1621    0.1186
+5        number_project 0.0525 0.0754    0.1133
+6                salary 0.0487 0.0884    0.0446
+7         Work_accident 0.0293 0.0474    0.0212
+8                 sales 0.0160 0.0464    0.0638
+9 promotion_last_5years 0.0018 0.0126    0.0057
+```
+
+```r
+target.feature <- var.imp$Feature %>% head(6)
+```
+In this example, target features are satisfaction_level, last_evaluation, average_montly_hours, time_spend_company, number_project, salary
 
 # Marginal Response for a Single Variable
 
@@ -90,7 +103,8 @@ In this example, target features are `r target.feature`
 
 individual conditional expectation (ICE) & Partial Dependence Plots (PDP) was drawn by subsample instances (due to large size)
 
-```{r}
+
+```r
 sub.sample <- sample(NROW(test.matrix), 500)
 sub.matrix <- test.matrix[sub.sample, ]
 sub.label  <- test.label[sub.sample]
@@ -108,12 +122,14 @@ for(feature.name in target.feature){
     plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
 }
 plot.pdps[[1]]
-
 ```
+
+![](200_Sensitivity_analysis_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
 
 ## Accumulated Local Effects Plots (ALE Plot)
 
-```{r}
+
+```r
 plot.ales <- list()
 for(feature.name in target.feature){
   ale <- variable_response(explainer.xgb,
@@ -122,12 +138,14 @@ for(feature.name in target.feature){
   plot.ales[[feature.name]] <- plot(ale) + theme(legend.position = 'none')# + ggtitle(feature.name)
 }
 plot.ales[[1]] 
-
 ```
 
+![](200_Sensitivity_analysis_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
 
-```{r, message=FALSE, results="hide", eval=FALSE}
+
+
+```r
 ggp.varRes <- gridExtra::grid.arrange(grobs = c(plot.pdps, plot.ales), nrow = 2)
 ggsave(ggp.varRes, filename = "./output/image.files/200_pdp-ale.png", width = 12, height = 4)
 ```
@@ -145,7 +163,8 @@ When plot_loess = TRUE is set, feature values are rounded to 3 significant digit
 
 Note: SHAP contributions are shown on the scale of model margin. E.g., for a logistic binomial objective, the margin is prediction before a sigmoidal transform into probability-like values. Also, since SHAP stands for "SHapley Additive exPlanation" (model prediction = sum of SHAP contributions for all features + bias), depending on the objective used, transforming SHAP contributions for a feature from the marginal to the prediction space is not necessarily a meaningful thing to do.
 
-```{r, fig.height=4, fig.width=8}
+
+```r
 png(filename = "./output/image.files/200_SHAP.png", width = 1200, height = 400, pointsize = 24)
 shap <- xgb.plot.shap(data  = train.matrix,
               model = model.xgb, 
@@ -153,6 +172,11 @@ shap <- xgb.plot.shap(data  = train.matrix,
               top_n = 6,
               n_col = 6, col = col, pch = 7, pch_NA = 17)
 dev.off()
+```
+
+```
+png 
+  2 
 ```
 
 ![SHAP  contribution dependency plots](./output/image.files/200_SHAP.png)

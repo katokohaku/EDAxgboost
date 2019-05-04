@@ -99,7 +99,7 @@ table1(~ factor(sales) + factor(salary)
 
 ```{r}
 full = full[sample(.N)]
-
+full
 ```
  
  # add Random Noise (to continuous feature)
@@ -110,11 +110,13 @@ tmp_std = sd(full[,satisfaction_level])
 full[,satisfaction_level:=satisfaction_level + runif(.N,-tmp_std,tmp_std)]
 full[,satisfaction_level:=satisfaction_level - min(satisfaction_level)]
 full[,satisfaction_level:=satisfaction_level / max(satisfaction_level)]
+full[,satisfaction_level:=round(satisfaction_level, digits = 4)]
 
 tmp_std = sd(full[,last_evaluation])
 full[,last_evaluation:=last_evaluation + runif(.N,-tmp_std,tmp_std) ]
 full[,last_evaluation:=last_evaluation - min(last_evaluation)]
 full[,last_evaluation:=last_evaluation / max(last_evaluation)]
+full[,last_evaluation:=round(last_evaluation, digits = 4)]
 
 tmp_min = min(full[,number_project])
 tmp_std = sd(full[,number_project])
@@ -144,7 +146,7 @@ table1(~ left +
          average_montly_hours + time_spend_company + 
          Work_accident + promotion_last_5years 
        | left, data = full)
-
+full
 ```
 
 
