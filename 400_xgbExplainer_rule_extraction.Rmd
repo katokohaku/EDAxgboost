@@ -71,130 +71,46 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 
 ```
 
-# Preditive result of All
-
-In this case, eval_metrics were high enough, therefore, we use test data for following evaluation
-
-```{r}
-test.pred <- predict(model.xgb, test.xgb.DMatrix)
-
-prediction.counts <- table(test.pred, test.label) %>% 
-  data.frame %>%
-  mutate(
-    predict = substr(test.pred, start = 1, stop = 4),
-    count   = ifelse(test.label == "0", Freq, -Freq)) 
-
-prediction.counts %>% 
-  ggplot(aes(x =  reorder(predict, -as.numeric(predict)),
-             y = count, 
-             fill = test.label)) +
-  geom_bar(stat="identity") +
-  coord_flip() +
-  labs(x = "prediction") +
-  ggtitle(sprintf("%i rules of %i instance was extracted", 
-                  NROW(prediction.counts), NROW(test.pred)))
-
-```
-
-# Feature pruning
-
-Target features are filterd using `xgb.importance()`
-
-```{r}
-var.imp <- xgb.importance(model = model.xgb,
-                          feature_names = dimnames(train.xgb.DMatrix)[[2]])
-
-var.imp %>% mutate_if(is.numeric, round, digits = 4)
-target.feature <- var.imp$Feature %>% head(5)
-target.feature
-
-train.selected <- loaded.obs$data$train$dummy.data.frame %>% 
-  select(target.feature)
-  
-train.selected.xgb.DMatrix <- xgb.DMatrix(data  = as.matrix(train.selected),
-                                          label = train.label)
-
-test.selected <- loaded.obs$data$test$dummy.data.frame %>% 
-  select(target.feature) 
-test.selected.xgb.DMatrix <- xgb.DMatrix(data  = as.matrix(test.selected),
-                                         label = test.label)
-
-```
-
-## rebuild XGB model
-
-```{r}
-param.set <- loaded.obs$model$param.set
-param.set$alpha <- 0.8
-param.set$max_depth <- 3
-set.seed(1)
-cv <- xgb.cv(params  = param.set, 
-             verbose = 1,
-             data    = train.selected.xgb.DMatrix,
-             nrounds = 200,
-             nfold   = 5,
-             early_stopping_rounds = 5)
-
-cv$evaluation_log %>% 
-  select(-ends_with("_std")) %>% 
-  tidyr::gather(key = data, value = auc, train_auc_mean, test_auc_mean) %>%
-  ggplot(aes(x = iter, y = auc, color = as.factor(data))) +
-  geom_line() +
-  geom_vline(xintercept = cv$niter)
-
-
-```
-
-```{r}
-model.selected.xgb <- xgb.train(params  = loaded.obs$model$param.set, 
-                       verbose = 1,
-                       data    = train.selected.xgb.DMatrix,
-                       nrounds = cv$niter)
-
-model.selected.xgb
-```
-
-## predictive performance for test set
-
-```{r}
-test.selected.pred <- predict(model.selected.xgb, test.selected.xgb.DMatrix)
-table(pred = ifelse(test.selected.pred > 0.5, 1, 0), test.label) %>% 
-  caret::confusionMatrix()
-
-# length(pred)
-prediction.counts <- table(pred = test.selected.pred, test.label) %>% 
-  data.frame %>% 
-  mutate(
-    predict   = substr(pred, start = 1, stop = 4),
-    count.log = ifelse(test.label == "0", (Freq), -(Freq))) %>% 
-  filter(Freq >0 )
-
-prediction.counts %>% 
-  ggplot(aes(x = reorder(predict, as.numeric(predict)),
-             y = count.log, 
-             fill = test.label)) +
-  geom_bar(stat="identity") +
-  coord_flip() +
-  labs(x = "prediction", y = "count") +
-  ggtitle(sprintf("%i rules of %i instance was extracted", 
-                  NROW(prediction.counts), NROW(test.pred)))
-
-```
-
 # view rules
 
 ## Using xgboostExplainer
 
 see https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
 
-```{r, results="hide", message=FALSE}
-explainer.xgb <-  buildExplainer(xgb.model    = model.selected.xgb, 
-                                 trainingData = test.selected.xgb.DMatrix, 
+
+```{r, results="hide", eval=FALSE}
+explainer.xgb <-  buildExplainer(xgb.model    = model.xgb, 
+                                 trainingData = test.xgb.DMatrix, 
                                  type         = "binary",
                                  base_score   = 0.5,
                                  trees_idx    = NULL)
 
 ```
+
+```{r}
+xgb.model    = model.xgb
+trainingData = test.xgb.DMatrix
+type         = "binary"
+base_score   = 0.5
+trees_idx    = NULL
+
+  col_names = attr(trainingData, ".Dimnames")[[2]]
+  cat("\nCreating the trees of the xgboost model...")
+  trees = xgb.model.dt.tree(col_names, model = xgb.model, trees = trees_idx)
+  
+  cat("\nGetting the leaf nodes for the training set observations...")
+  nodes.train = predict(xgb.model, trainingData, predleaf = TRUE)
+  
+  cat("\nBuilding the Explainer...")
+  cat("\nSTEP 1 of 2")
+  tree_list = xgboostExplainer:::getStatsForTrees(trees, nodes.train, type = type, base_score = base_score)
+  cat("\n\nSTEP 2 of 2")
+  explainer = xgboostExplainer:::buildExplainerFromTreeList(tree_list, col_names)
+  cat("\n\nDONE!\n\n")
+  return(explainer)
+
+```
+
 
 ## explain test set
 

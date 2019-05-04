@@ -1,0 +1,134 @@
+---
+author: "Satoshi Kato"
+title: "rule extraction from xgboost model"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    keep_md: yes
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = FALSE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("devtools", dependencies = TRUE)
+devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
+
+install.packages("ggridges", dependencies = TRUE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(magrittr)
+require(data.table)
+require(xgboost)
+require(xgboostExplainer)
+require(ggridges)
+
+
+```
+
+# Preparation 
+
+```{r load.model.and.data}
+loaded.obs  <- readRDS("./middle/data_and_model_selected.Rds")
+
+model.selected.xgb   <- loaded.obs$model$xgb 
+test.selected.xgb.DMatrix <- xgb.DMatrix()
+
+test.label <- loaded.obs$data$test$label
+test.df    <- loaded.obs$data$test$data.frame
+test.selected.xgb.DMatrix  <- xgb.DMatrix("./middle/test_selected.xgbDMatrix")
+
+```
+
+
+
+# variable responce
+
+## Using xgboostExplainer
+
+see https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
+
+```{r, results="hide", message=FALSE}
+explainer.xgb <-  buildExplainer(xgb.model    = model.selected.xgb, 
+                                 trainingData = test.selected.xgb.DMatrix, 
+                                 type         = "binary",
+                                 base_score   = 0.5,
+                                 trees_idx    = NULL)
+
+```
+
+## explain test set
+
+```{r, results="hide", message=FALSE}
+xgb.breakdown <- explainPredictions(xgb.model = model.selected.xgb,
+                                    explainer = explainer.xgb,
+                                    data      = test.selected.xgb.DMatrix)
+
+```
+
+## explain single observation
+
+```{r, results="hide", message=FALSE}
+sw <- showWaterfall(
+  idx = 1,
+  xgb.model   = model.selected.xgb, 
+  explainer   = explainer.xgb, 
+  DMatrix     = test.selected.xgb.DMatrix, 
+  data.matrix = as.matrix(test.selected))
+
+ggsave(sw, filename = "output/image.files/040_explain_single_obs.png")
+
+```
+
+
+
+![single observation](output/image.files/040_explain_single_obs.png)
+
+```{r}
+feature.names <- test.df %>% colnames()
+feature.impact <- list()
+
+for(fn  in feature.names){
+  feature.impact[[fn]] <- data.frame(
+    value  = test.df %>% select(fn) %>% unlist,
+    impact = xgb.breakdown %>% select(fn) %>% unlist
+  )
+}
+feature.impact %>% str
+
+```
+
+```{r}
+feature.impact$l %>% 
+  ggplot(aes(x = value, y = impact)) +
+  geom_point()
+```
+
