@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "add noise to data"
-date: "2019/05/03"
+date: "2019/05/04"
 output:
   html_document:
     fig_caption: yes

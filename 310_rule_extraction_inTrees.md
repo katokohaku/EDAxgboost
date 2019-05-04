@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "rule extraction from xgboost model"
-date: "2019/05/03"
+date: "2019/05/04"
 output:
   html_document:
     fig_caption: yes
@@ -53,7 +53,7 @@ train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 ```
 
 ```
-[19:36:19] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
+[22:19:08] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
 ```
 
 ```r
@@ -63,7 +63,7 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 ```
 
 ```
-[19:36:19] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
+[22:19:08] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
 ```
 
 # Extract rules using inTrees

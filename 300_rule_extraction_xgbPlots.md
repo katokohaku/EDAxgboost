@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: rule extraction from xgboost model"
-date: "2019/05/03"
+date: "2019/05/04"
 output:
   html_document:
     fig_caption: yes
@@ -54,7 +54,7 @@ train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 ```
 
 ```
-[18:23:04] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
+[22:17:24] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
 ```
 
 ```r

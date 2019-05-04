@@ -192,7 +192,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">rule extraction from xgboost model</h1>
 <h4 class="author">Satoshi Kato</h4>
-<h4 class="date">2019/05/03</h4>
+<h4 class="date">2019/05/04</h4>
 
 </div>
 
@@ -227,11 +227,11 @@ model.xgb   &lt;- loaded.obs$model$xgb
 train.label  &lt;- loaded.obs$data$train$label
 train.matrix &lt;- loaded.obs$data$train$matrix
 train.xgb.DMatrix &lt;- xgb.DMatrix(&quot;./middle/train.xgbDMatrix&quot;)</code></pre>
-<pre><code>[19:36:19] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix</code></pre>
+<pre><code>[22:19:08] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix</code></pre>
 <pre class="r"><code>test.label  &lt;- loaded.obs$data$test$label
 test.matrix &lt;- loaded.obs$data$test$matrix
 test.xgb.DMatrix  &lt;- xgb.DMatrix(&quot;./middle/test.xgbDMatrix&quot;)</code></pre>
-<pre><code>[19:36:19] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix</code></pre>
+<pre><code>[22:19:08] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix</code></pre>
 </div>
 <div id="extract-rules-using-intrees" class="section level1">
 <h1>Extract rules using inTrees</h1>

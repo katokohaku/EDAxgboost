@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "rule extraction from xgboost model"
-date: "`r format(Sys.time(), '%Y/%m/%d')`"
+date: "2019/05/04"
 output:
   html_document:
     fig_caption: yes
@@ -20,28 +20,17 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_knit$set(progress = TRUE, 
-                     verbose  = TRUE, 
-                     root.dir = ".")
 
-knitr::opts_chunk$set(collapse = TRUE, 
-                      comment = "", 
-                      message = TRUE, 
-                      warning = FALSE, 
-                      include = TRUE,
-                      echo    = TRUE)
 
-set.seed(1)
-```
 
-```{r install.requirements, eval = FALSE}
+```r
 install.packages("devtools", dependencies = TRUE)
 devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
 
 ```
 
-```{r require.packages, message=FALSE}
+
+```r
 require(tidyverse)
 require(magrittr)
 require(data.table)
@@ -49,12 +38,12 @@ require(xgboost)
 require(xgboostExplainer)
 require(ggridges)
 
-
 ```
 
 # Preparation 
 
-```{r load.model.and.data}
+
+```r
 loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 
 model.xgb   <- loaded.obs$model$xgb 
@@ -67,7 +56,6 @@ train.xgb.DMatrix <- xgb.DMatrix(train.matrix, label = train.label, missing = NA
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
-
 ```
 
 # view rules
@@ -77,7 +65,8 @@ test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
 see https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
 
 
-```{r, results="hide", eval=FALSE}
+
+```r
 explainer.xgb <-  buildExplainer(xgb.model    = model.xgb, 
                                  trainingData = train.xgb.DMatrix, 
                                  type         = "binary",
@@ -86,14 +75,15 @@ explainer.xgb <-  buildExplainer(xgb.model    = model.xgb,
 saveRDS(explainer.xgb,file = "./middle/400_explainer_xgb.Rds")
 ```
 
-```{r}
-explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
 
+```r
+explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
 ```
 
 ## extract explaination path
 
-```{r, eval = FALSE}
+
+```r
 xgb.breakdown <- explainPredictions(xgb.model = model.xgb,
                                     explainer = explainer.xgb,
                                     data      = train.xgb.DMatrix)
@@ -101,18 +91,19 @@ saveRDS(xgb.breakdown, file = "./middle/400_xgb_breakdown.Rds")
 
 ```
 
-```{r, results="hide", message=FALSE}
+
+```r
 xgb.breakdown <- readRDS("./middle/400_xgb_breakdown.Rds")
 
 weight     <- rowSums(xgb.breakdown)
 prediction <- 1/(1 + exp(-weight))
-
 ```
 
 
 ## explain single observation
 
-```{r, results="hide", message=FALSE, eval = FALSE}
+
+```r
 sw <- showWaterfall(
   idx = 1,
   xgb.model   = model.xgb, 
@@ -133,7 +124,8 @@ ggsave(sw, filename = "output/image.files/400_explain_single_obs.png")
 according to: 
 https://liuyanguu.github.io/post/2018/10/14/shap-visualization-for-xgboost/
 
-```{r}
+
+```r
 feature.value.long <- train.df %>% 
   scale() %>%
   data.frame() %>% 
@@ -148,8 +140,16 @@ feature.impact.long <- xgb.breakdown %>%
   mutate(feature = factor(feature))
   
 feature.impact.long %>% head
+  id            feature     impact      value
+1  1 satisfaction_level -0.8510627  1.2569407
+2  2 satisfaction_level -1.0387341  1.0321169
+3  3 satisfaction_level  0.2425455  0.1776939
+4  4 satisfaction_level  1.4692219 -1.2475779
+5  5 satisfaction_level -1.0766214  1.0894793
+6  6 satisfaction_level  0.2372383 -0.1364117
 ```
-```{r}
+
+```r
 # require(ggridge)
 feature.impact.long %>% 
   ggplot(aes(x = impact, y = feature, point_color = value, fill = feature))+
@@ -160,10 +160,13 @@ feature.impact.long %>%
     jittered_points = TRUE, point_alpha = 0.05, point_size = 2, point_shape = "|",
     position = position_points_jitter(width = 0.05, height = 0)) + 
   scale_color_gradient(low="#FFCC33", high="#6600CC", labels=c("Low","High"))
-
+Picking joint bandwidth of 0.065
 ```
 
-```{r}
+![](410_xgbExplainer_Sensitivity_analysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+
+
+```r
 feature.impact.long %>% 
   ggplot()+
     coord_flip() + 
@@ -174,11 +177,14 @@ feature.impact.long %>%
   theme_bw()
 ```
 
+![](410_xgbExplainer_Sensitivity_analysis_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+
 ## View individual feature responce
 
 ## example1: satisfaction_level
 
-```{r}
+
+```r
 feature.impact <- data.frame(value  = train.df$satisfaction_level, 
                              impact = xgb.breakdown$satisfaction_level)
 feature.impact %>% 
@@ -186,13 +192,15 @@ feature.impact %>%
   geom_point(alpha = 0.3) +
   labs(title = "satisfaction_level", x = "satisfaction_level", y = "Feature impact on log-odds") +
   theme_bw()
-
 ```
+
+![](410_xgbExplainer_Sensitivity_analysis_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
 
 
 ## example 2-1: last_evaluation
 
-```{r}
+
+```r
 feature.impact <- data.frame(value  = train.df$last_evaluation, 
                              impact = xgb.breakdown$last_evaluation)
 feature.impact %>% 
@@ -200,13 +208,15 @@ feature.impact %>%
   geom_point(alpha = 0.3) +
   labs(title = "last_evaluation", x = "last_evaluation", y = "Feature impact on log-odds") +
   theme_bw()
-
 ```
+
+![](410_xgbExplainer_Sensitivity_analysis_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
 
 
 ## example 2-2: last_evaluation x satisfaction_level
 
-```{r}
+
+```r
 feature.impact <- data.frame(value  = train.df$last_evaluation, 
                              impact = xgb.breakdown$last_evaluation,
                              satisfaction_level = train.df$satisfaction_level)
@@ -216,6 +226,6 @@ feature.impact %>%
   labs(title = "last_evaluation", x = "last_evaluation", y = "Feature impact on log-odds") +
   theme_bw() + 
   scale_color_gradient2(midpoint = 0.5, low="blue", mid="grey", high="red")
-
-
 ```
+
+![](410_xgbExplainer_Sensitivity_analysis_files/figure-html/unnamed-chunk-11-1.png)<!-- -->

@@ -48,12 +48,12 @@ model.xgb   <- loaded.obs$model$xgb
 train.label <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
 train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
-#> [16:55:30] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
+#> [22:15:47] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
 
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
-#> [16:55:30] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
+#> [22:15:47] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Target features
 
