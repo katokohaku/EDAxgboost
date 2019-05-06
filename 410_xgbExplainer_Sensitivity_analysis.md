@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "rule extraction from xgboost model"
-date: "2019/05/04"
+date: "2019/05/06"
 output:
   html_document:
     fig_caption: yes

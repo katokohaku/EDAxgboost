@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: rule extraction from xgboost model"
+title: variable responces of xgboost model
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -70,10 +70,6 @@ test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
 Target features to watch feature responces are filterd using `xgb.importance()`
 
 ```{r explainer.DALEX}
-explainer.xgb <- DALEX::explain(model.xgb, 
-                                data  = test.matrix, 
-                                y     = test.label, 
-                                label = "xgboost")
 
 var.imp <- xgb.importance(model = model.xgb,
                           feature_names = dimnames(train.xgb.DMatrix)[[2]])
@@ -95,41 +91,54 @@ sub.sample <- sample(NROW(test.matrix), 500)
 sub.matrix <- test.matrix[sub.sample, ]
 sub.label  <- test.label[sub.sample]
 
-plot.pdps <- list()
-for(feature.name in target.feature){
-  plot.pdps[[feature.name]] <- pdp::partial(
-    model.xgb, 
-    pred.var = feature.name,
-    train    = sub.matrix, 
-    plot  = TRUE, 
-    rug   = TRUE,
-    ice   = TRUE, 
-    alpha = 0.1,
-    plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
-}
-plot.pdps[[1]]
+pdp::partial(
+  model.xgb, pred.var = "last_evaluation", train = sub.matrix, 
+  plot = TRUE, rug = TRUE, ice = TRUE, alpha = 0.1,
+  plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
 
 ```
 
 ## Accumulated Local Effects Plots (ALE Plot)
 
 ```{r}
-plot.ales <- list()
-for(feature.name in target.feature){
-  ale <- variable_response(explainer.xgb,
-                           variable =  feature.name,
-                           type = "ale", labels = NULL)
-  plot.ales[[feature.name]] <- plot(ale) + theme(legend.position = 'none')# + ggtitle(feature.name)
-}
-plot.ales[[1]] 
+explainer.xgb <- DALEX::explain(
+  model.xgb, data = test.matrix, y = test.label)
+
+ale.xgb <- DALEX::variable_response(
+  explainer.xgb, variable = "last_evaluation", type = "ale")
+
+ale.xgb %>% plot()
 
 ```
 
+## comparison by feature: ICE+PDP vs ALE plot
 
+```{r, eval = FALSE}
+sub.sample <- sample(NROW(test.matrix), 500)
+sub.matrix <- test.matrix[sub.sample, ]
+sub.label  <- test.label[sub.sample]
 
-```{r, message=FALSE, results="hide", eval=FALSE}
-ggp.varRes <- gridExtra::grid.arrange(grobs = c(plot.pdps, plot.ales), nrow = 2)
-ggsave(ggp.varRes, filename = "./output/image.files/200_pdp-ale.png", width = 12, height = 4)
+plot.pdps <- list()
+for(feature.name in target.feature){
+  plot.pdps[[feature.name]] <- pdp::partial(
+     model.xgb, pred.var = feature.name, train = sub.matrix, 
+     plot = TRUE, rug = TRUE, ice = TRUE, alpha = 0.1,
+     plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
+}
+
+plot.ales <- list()
+for(feature.name in target.feature){
+  ale <- variable_response(
+    explainer.xgb, variable = feature.name, type = "ale", labels = NULL)
+  
+  plot.ales[[feature.name]] <- plot(ale) +
+    theme(legend.position = 'none')# + ggtitle(feature.name)
+}
+
+ggp.varRes <- gridExtra::grid.arrange(
+  grobs = c(plot.pdps, plot.ales), nrow = 2)
+ggsave(ggp.varRes, width = 12, height = 4,
+        filename = "./output/image.files/200_pdp-ale.png")
 ```
 ![](./output/image.files/200_pdp-ale.png)
 

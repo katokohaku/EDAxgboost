@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
-title: rule extraction from xgboost model"
-date: "2019/05/04"
+title: variable responces of xgboost model
+date: "2019/05/06"
 output:
   html_document:
     fig_caption: yes
@@ -48,12 +48,12 @@ model.xgb   <- loaded.obs$model$xgb
 train.label <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
 train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
-#> [22:15:47] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
+#> [22:45:30] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
 
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
-#> [22:15:47] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
+#> [22:45:30] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Target features
 
@@ -61,10 +61,6 @@ Target features to watch feature responces are filterd using `xgb.importance()`
 
 
 ```r
-explainer.xgb <- DALEX::explain(model.xgb, 
-                                data  = test.matrix, 
-                                y     = test.label, 
-                                label = "xgboost")
 
 var.imp <- xgb.importance(model = model.xgb,
                           feature_names = dimnames(train.xgb.DMatrix)[[2]])
@@ -96,19 +92,10 @@ sub.sample <- sample(NROW(test.matrix), 500)
 sub.matrix <- test.matrix[sub.sample, ]
 sub.label  <- test.label[sub.sample]
 
-plot.pdps <- list()
-for(feature.name in target.feature){
-  plot.pdps[[feature.name]] <- pdp::partial(
-    model.xgb, 
-    pred.var = feature.name,
-    train    = sub.matrix, 
-    plot  = TRUE, 
-    rug   = TRUE,
-    ice   = TRUE, 
-    alpha = 0.1,
-    plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
-}
-plot.pdps[[1]]
+pdp::partial(
+  model.xgb, pred.var = "last_evaluation", train = sub.matrix, 
+  plot = TRUE, rug = TRUE, ice = TRUE, alpha = 0.1,
+  plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
 ```
 
 ![](200_Sensitivity_analysis_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
@@ -117,24 +104,46 @@ plot.pdps[[1]]
 
 
 ```r
-plot.ales <- list()
-for(feature.name in target.feature){
-  ale <- variable_response(explainer.xgb,
-                           variable =  feature.name,
-                           type = "ale", labels = NULL)
-  plot.ales[[feature.name]] <- plot(ale) + theme(legend.position = 'none')# + ggtitle(feature.name)
-}
-plot.ales[[1]] 
+explainer.xgb <- DALEX::explain(
+  model.xgb, data = test.matrix, y = test.label)
+
+ale.xgb <- DALEX::variable_response(
+  explainer.xgb, variable = "last_evaluation", type = "ale")
+
+ale.xgb %>% plot()
 ```
 
 ![](200_Sensitivity_analysis_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
-
+## comparison by feature: ICE+PDP vs ALE plot
 
 
 ```r
-ggp.varRes <- gridExtra::grid.arrange(grobs = c(plot.pdps, plot.ales), nrow = 2)
-ggsave(ggp.varRes, filename = "./output/image.files/200_pdp-ale.png", width = 12, height = 4)
+sub.sample <- sample(NROW(test.matrix), 500)
+sub.matrix <- test.matrix[sub.sample, ]
+sub.label  <- test.label[sub.sample]
+
+plot.pdps <- list()
+for(feature.name in target.feature){
+  plot.pdps[[feature.name]] <- pdp::partial(
+     model.xgb, pred.var = feature.name, train = sub.matrix, 
+     plot = TRUE, rug = TRUE, ice = TRUE, alpha = 0.1,
+     plot.engine = "ggplot2") #+ ggtitle(sprintf("ICE + PDP: %s", feature.name))
+}
+
+plot.ales <- list()
+for(feature.name in target.feature){
+  ale <- variable_response(
+    explainer.xgb, variable = feature.name, type = "ale", labels = NULL)
+  
+  plot.ales[[feature.name]] <- plot(ale) +
+    theme(legend.position = 'none')# + ggtitle(feature.name)
+}
+
+ggp.varRes <- gridExtra::grid.arrange(
+  grobs = c(plot.pdps, plot.ales), nrow = 2)
+ggsave(ggp.varRes, width = 12, height = 4,
+        filename = "./output/image.files/200_pdp-ale.png")
 ```
 ![](./output/image.files/200_pdp-ale.png)
 
