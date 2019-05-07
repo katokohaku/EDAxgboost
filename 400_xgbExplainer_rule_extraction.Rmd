@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: "rule extraction from xgboost model"
+title: individual explanation using xgboostExplainer
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -71,7 +71,7 @@ test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
 
 ```
 
-# view rules
+# breakdown obsavation
 
 ## Using xgboostExplainer
 
@@ -92,7 +92,18 @@ explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
 
 ```
 
+```{r}
+explainer.xgb %>% head() %>% round(digits = 4)
+```
+
 ## extract explaination path
+
+```{r}
+predleaf.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix, predleaf = TRUE)
+
+predleaf.xgb[1:6, 1:12]
+```
 
 ```{r, eval = FALSE}
 xgb.breakdown <- explainPredictions(xgb.model = model.xgb,
@@ -102,14 +113,37 @@ saveRDS(xgb.breakdown, file = "./middle/400_xgb_breakdown.Rds")
 
 ```
 
-```{r, results="hide", message=FALSE}
+```{r}
 xgb.breakdown <- readRDS("./middle/400_xgb_breakdown.Rds")
+xgb.breakdown %>% head() %>% knitr::kable(digits = 4)
 
 weight     <- rowSums(xgb.breakdown)
 prediction <- 1/(1 + exp(-weight))
 
 ```
 
+This is almost the same result as: `xgboost:::predict.xgb.Booster(...,   predcontrib = TRUE, approxcontrib = TRUE)`
+
+According to help(xgboost:::predict.xgb.Booster)@Details
+
+Setting `predcontrib = TRUE` + `approxcontrib = TRUE` approximates these values following the idea explained in http://blog.datadive.net/interpreting-random-forests/.
+
+```{r}
+prediction.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix)
+
+approxcontrib.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix, 
+  predcontrib = TRUE, approxcontrib = TRUE)
+
+approxcontrib.xgb %>% head() %>% knitr::kable(digits = 4)
+
+prediction.xgb %>% head()
+weight.app <- approxcontrib.xgb %>% head %>% rowSums()
+weight.app
+1/(1 + exp(-weight.app))
+
+```
 
 ## explain single observation
 
@@ -121,7 +155,8 @@ sw <- showWaterfall(
   DMatrix     = train.xgb.DMatrix, 
   data.matrix = train.matrix)
 
-ggsave(sw, filename = "output/image.files/400_explain_single_obs.png")
+ggsave(sw, filename = "output/image.files/400_explain_single_obs.png",
+       width = 5, height = 3.5)
 
 ```
 

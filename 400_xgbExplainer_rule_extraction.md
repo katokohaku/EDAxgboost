@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
-title: "rule extraction from xgboost model"
-date: "2019/05/04"
+title: individual explanation using xgboostExplainer
+date: "2019/05/07"
 output:
   html_document:
     fig_caption: yes
@@ -59,7 +59,7 @@ test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
 ```
 
-# view rules
+# breakdown obsavation
 
 ## Using xgboostExplainer
 
@@ -81,7 +81,48 @@ saveRDS(explainer.xgb,file = "./middle/400_explainer_xgb.Rds")
 explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
 ```
 
+
+```r
+explainer.xgb %>% head() %>% round(digits = 4)
+   satisfaction_level last_evaluation number_project average_montly_hours
+1:             0.0583          0.0000        -0.0323               0.0000
+2:             0.0583          0.0000         0.0369               0.0000
+3:            -0.0422          0.0346         0.0000               0.0000
+4:             0.0583          0.0192         0.0000              -0.0130
+5:             0.0583         -0.0530         0.0000              -0.0130
+6:             0.0583          0.0000        -0.0808               0.0134
+   time_spend_company Work_accident promotion_last_5years sales salary
+1:            -0.1049        0.0000                     0     0      0
+2:            -0.1049        0.0000                     0     0      0
+3:            -0.0806        0.0000                     0     0      0
+4:             0.0034        0.0042                     0     0      0
+5:             0.0034        0.0042                     0     0      0
+6:             0.0034        0.0042                     0     0      0
+   intercept leaf tree
+1:    0.0015    9    0
+2:    0.0015   10    0
+3:    0.0015   25    0
+4:    0.0015   27    0
+5:    0.0015   28    0
+6:    0.0015   29    0
+```
+
 ## extract explaination path
+
+
+```r
+predleaf.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix, predleaf = TRUE)
+
+predleaf.xgb[1:6, 1:12]
+     [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11] [,12]
+[1,]   48   47   49   26   44   34   40   49   22    45    40    45
+[2,]   48   44   45   19   40   34   40   44   21    45    40    41
+[3,]   35   42   42   19   35   27   27   40   19    35    35    38
+[4,]   30   29   28   19   27   23   26   33   19    30    27    30
+[5,]   48   43   45   19   40   34   40   44   19    38    36    41
+[6,]   35   35   35   20   41   27   27   35   19    39    35    33
+```
 
 
 ```r
@@ -95,11 +136,66 @@ saveRDS(xgb.breakdown, file = "./middle/400_xgb_breakdown.Rds")
 
 ```r
 xgb.breakdown <- readRDS("./middle/400_xgb_breakdown.Rds")
+xgb.breakdown %>% head() %>% knitr::kable(digits = 4)
+```
+
+
+
+ satisfaction_level   last_evaluation   number_project   average_montly_hours   time_spend_company   Work_accident   promotion_last_5years     sales    salary   intercept
+-------------------  ----------------  ---------------  ---------------------  -------------------  --------------  ----------------------  --------  --------  ----------
+            -0.8511            0.4867           0.0137                 0.7276               1.0806          0.0839                  0.0069   -0.1085   -0.2608     -0.0052
+            -1.0387            0.5086           0.4655                 0.1135               0.2008          0.0823                  0.0061    0.1384   -0.1494     -0.0052
+             0.2425            0.3310          -0.0172                -0.1523               0.1451          0.1044                  0.0051   -0.2508    0.3425     -0.0052
+             1.4692           -0.1740           0.2443                 0.3454              -0.0153          0.1068                  0.0046    0.2427    0.2344     -0.0052
+            -1.0766            0.5801          -0.1779                -0.0578               0.1879          0.1020                  0.0046    0.1182    0.3238     -0.0052
+             0.2372            0.6904           0.3340                 0.5119               0.2664          0.1044                  0.0051    0.0259    0.3422     -0.0052
+
+```r
 
 weight     <- rowSums(xgb.breakdown)
 prediction <- 1/(1 + exp(-weight))
 ```
 
+This is almost the same result as: `xgboost:::predict.xgb.Booster(...,   predcontrib = TRUE, approxcontrib = TRUE)`
+
+According to help(xgboost:::predict.xgb.Booster)@Details
+
+Setting `predcontrib = TRUE` + `approxcontrib = TRUE` approximates these values following the idea explained in http://blog.datadive.net/interpreting-random-forests/.
+
+
+```r
+prediction.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix)
+
+approxcontrib.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix, 
+  predcontrib = TRUE, approxcontrib = TRUE)
+
+approxcontrib.xgb %>% head() %>% knitr::kable(digits = 4)
+```
+
+
+
+ satisfaction_level   last_evaluation   number_project   average_montly_hours   time_spend_company   Work_accident   promotion_last_5years     sales    salary      BIAS
+-------------------  ----------------  ---------------  ---------------------  -------------------  --------------  ----------------------  --------  --------  --------
+            -0.8511            0.4867           0.0137                 0.7276               1.0806          0.0839                  0.0069   -0.1085   -0.2608   -0.0052
+            -1.0387            0.5086           0.4655                 0.1135               0.2008          0.0823                  0.0061    0.1384   -0.1494   -0.0052
+             0.2425            0.3310          -0.0172                -0.1523               0.1451          0.1044                  0.0051   -0.2508    0.3425   -0.0052
+             1.4692           -0.1740           0.2443                 0.3454              -0.0153          0.1068                  0.0046    0.2427    0.2344   -0.0052
+            -1.0766            0.5801          -0.1779                -0.0578               0.1879          0.1020                  0.0046    0.1182    0.3238   -0.0052
+             0.2372            0.6904           0.3340                 0.5119               0.2664          0.1044                  0.0051    0.0259    0.3422   -0.0052
+
+```r
+
+prediction.xgb %>% head()
+[1] 0.7638327 0.5797617 0.6781101 0.9207772 0.4998003 0.9250071
+weight.app <- approxcontrib.xgb %>% head %>% rowSums()
+weight.app
+[1]  1.1738086063  0.3217955003  0.7451003548  2.4529540115 -0.0007986953
+[6]  2.5124074277
+1/(1 + exp(-weight.app))
+[1] 0.7638327 0.5797618 0.6781102 0.9207772 0.4998003 0.9250071
+```
 
 ## explain single observation
 
@@ -112,7 +208,8 @@ sw <- showWaterfall(
   DMatrix     = train.xgb.DMatrix, 
   data.matrix = train.matrix)
 
-ggsave(sw, filename = "output/image.files/400_explain_single_obs.png")
+ggsave(sw, filename = "output/image.files/400_explain_single_obs.png",
+       width = 5, height = 3.5)
 
 ```
 
@@ -169,7 +266,7 @@ mapping.tsne %>%
   scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
 ```
 
-![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
 ## Hierarchical clustering
 
 
@@ -231,7 +328,7 @@ mapping.tsne %>%
   guides(colour = FALSE)
 ```
 
-![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
 
 
 ## View rules in several group
