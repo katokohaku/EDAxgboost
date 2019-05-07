@@ -152,13 +152,14 @@ predinteraction.xgb <- xgboost:::predict.xgb.Booster(
 ```
 ```{r}
 predinteraction.xgb %>% str
-accum.interaction <- apply(abs(predinteraction.xgb), 2:3, sum)
-accum.interaction %>% 
+mea.interaction <- apply(abs(predinteraction.xgb), 2:3, sum) / NROW(predinteraction.xgb)
+
+mea.interaction %>% 
   data.frame %>% 
   rownames_to_column("feature") %>% 
   gather(key = interact, value = value, -feature) %>% 
   mutate_at(vars(feature, interact), as.factor) %>% 
-  ggplot(aes(x = feature, y = interact, fill = log10(value))) +
+  ggplot(aes(x = feature, y = interact, fill = value)) +
   geom_tile() +
   scale_fill_gradient(low="white",high="red") +
   theme(axis.text.x = element_text(angle = 90))
