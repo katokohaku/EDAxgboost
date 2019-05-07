@@ -133,28 +133,6 @@ ggsave(ggp.varRes, filename = "./output/image.files/200_pdp-ale.png", width = 12
 ```
 ![](./output/image.files/200_pdp-ale.png)
 
-# SHAP contribution dependency plots
 
-**According to man(xgb.plot.shap)::Detail**
-
-Visualizing the SHAP feature contribution to prediction dependencies on feature value.
-
-These scatterplots represent how SHAP feature contributions depend of feature values. The similarity to partial dependency plots is that they also give an idea for how feature values affect predictions. However, in partial dependency plots, we usually see marginal dependencies of model prediction on feature value, while SHAP contribution dependency plots display the estimated contributions of a feature to model prediction for each individual case.
-
-When plot_loess = TRUE is set, feature values are rounded to 3 significant digits and weighted LOESS is computed and plotted, where weights are the numbers of data points at each rounded value.
-
-Note: SHAP contributions are shown on the scale of model margin. E.g., for a logistic binomial objective, the margin is prediction before a sigmoidal transform into probability-like values. Also, since SHAP stands for "SHapley Additive exPlanation" (model prediction = sum of SHAP contributions for all features + bias), depending on the objective used, transforming SHAP contributions for a feature from the marginal to the prediction space is not necessarily a meaningful thing to do.
-
-```{r, fig.height=4, fig.width=8}
-png(filename = "./output/image.files/200_SHAP.png", width = 1200, height = 400, pointsize = 24)
-shap <- xgb.plot.shap(data  = train.matrix,
-              model = model.xgb, 
-              # sabsumple = 300,
-              top_n = 6,
-              n_col = 6, col = col, pch = 7, pch_NA = 17)
-dev.off()
-```
-
-![SHAP  contribution dependency plots](./output/image.files/200_SHAP.png)
 
 

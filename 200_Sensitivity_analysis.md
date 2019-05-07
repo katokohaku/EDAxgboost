@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
-title: rule extraction from xgboost model"
-date: "2019/05/04"
+title: Sensitivity Analysis for xgboost model"
+date: "2019/05/07"
 output:
   html_document:
     fig_caption: yes
@@ -45,15 +45,15 @@ loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 # loaded.obs %>% str
 model.xgb   <- loaded.obs$model$xgb 
 
-train.label <- loaded.obs$data$train$label
+train.label  <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
 train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
-#> [22:15:47] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
+#> [22:19:02] 4000x9 matrix with 36000 entries loaded from ./middle/train.xgbDMatrix
 
 test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix("./middle/test.xgbDMatrix")
-#> [22:15:47] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
+#> [22:19:02] 10999x9 matrix with 98991 entries loaded from ./middle/test.xgbDMatrix
 ```
 # Target features
 
@@ -138,31 +138,6 @@ ggsave(ggp.varRes, filename = "./output/image.files/200_pdp-ale.png", width = 12
 ```
 ![](./output/image.files/200_pdp-ale.png)
 
-# SHAP contribution dependency plots
 
-**According to man(xgb.plot.shap)::Detail**
-
-Visualizing the SHAP feature contribution to prediction dependencies on feature value.
-
-These scatterplots represent how SHAP feature contributions depend of feature values. The similarity to partial dependency plots is that they also give an idea for how feature values affect predictions. However, in partial dependency plots, we usually see marginal dependencies of model prediction on feature value, while SHAP contribution dependency plots display the estimated contributions of a feature to model prediction for each individual case.
-
-When plot_loess = TRUE is set, feature values are rounded to 3 significant digits and weighted LOESS is computed and plotted, where weights are the numbers of data points at each rounded value.
-
-Note: SHAP contributions are shown on the scale of model margin. E.g., for a logistic binomial objective, the margin is prediction before a sigmoidal transform into probability-like values. Also, since SHAP stands for "SHapley Additive exPlanation" (model prediction = sum of SHAP contributions for all features + bias), depending on the objective used, transforming SHAP contributions for a feature from the marginal to the prediction space is not necessarily a meaningful thing to do.
-
-
-```r
-png(filename = "./output/image.files/200_SHAP.png", width = 1200, height = 400, pointsize = 24)
-shap <- xgb.plot.shap(data  = train.matrix,
-              model = model.xgb, 
-              # sabsumple = 300,
-              top_n = 6,
-              n_col = 6, col = col, pch = 7, pch_NA = 17)
-dev.off()
-#> png 
-#>   2
-```
-
-![SHAP  contribution dependency plots](./output/image.files/200_SHAP.png)
 
 
