@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
-title: "add noise to data"
-date: "2019/05/04"
+title: "add noise on data"
+date: "2019/05/07"
 output:
   html_document:
     fig_caption: yes
@@ -26,13 +26,17 @@ editor_options:
 ```r
 install.packages("tidyverse",   dependencies = TRUE)
 install.packages("table1",      dependencies = TRUE)
+install.packages("GGally",      dependencies = TRUE)
 ```
 
 
 ```r
 require(tidyverse)
+require(magrittr)
 require(data.table)
 require(table1)
+require(MASS)
+require(GGally)
 ```
 
 # Purpose
@@ -65,7 +69,39 @@ Source data in this sample is from : https://github.com/ryankarlos/Human-Resourc
 
 ```r
 full = fread('./input/HR_comma_sep.csv', stringsAsFactors = T)
+full <- full %>%
+  mutate(left = factor(left)) %>% 
+  dplyr::select(left, everything()) %>% 
+  as.data.table()
+full %>% str
 ```
+
+```
+Classes 'data.table' and 'data.frame':	14999 obs. of  10 variables:
+ $ left                 : Factor w/ 2 levels "0","1": 2 2 2 2 2 2 2 2 2 2 ...
+ $ satisfaction_level   : num  0.38 0.8 0.11 0.72 0.37 0.41 0.1 0.92 0.89 0.42 ...
+ $ last_evaluation      : num  0.53 0.86 0.88 0.87 0.52 0.5 0.77 0.85 1 0.53 ...
+ $ number_project       : int  2 5 7 5 2 2 6 5 5 2 ...
+ $ average_montly_hours : int  157 262 272 223 159 153 247 259 224 142 ...
+ $ time_spend_company   : int  3 6 4 5 3 3 4 5 5 3 ...
+ $ Work_accident        : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ promotion_last_5years: int  0 0 0 0 0 0 0 0 0 0 ...
+ $ sales                : Factor w/ 10 levels "IT","RandD","accounting",..: 8 8 8 8 8 8 8 8 8 8 ...
+ $ salary               : Factor w/ 3 levels "high","low","medium": 2 3 3 2 2 2 2 2 2 2 ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+```
+
+
+```r
+ggpair.before <- GGally::ggpairs(full, 
+                                 aes(color = left, point_alpha = 0.3, alpha = 0.5),
+                                 upper = list(continuous = "density"),
+                                 progress = FALSE)
+
+ggsave(ggpair.before, filename = "./output/image.files/000_ggpair_before.png", width = 6, height = 5)
+```
+
+![](./output/image.files/000_ggpair_before.png)
 
 
 ```r
@@ -93,16 +129,16 @@ table1(~ left +
 <td class='firstrow'></td>
 </tr>
 <tr>
-<td class='rowlabel'>Mean (SD)</td>
-<td>0.00 (0.00)</td>
-<td>1.00 (0.00)</td>
-<td>0.238 (0.426)</td>
+<td class='rowlabel'>0</td>
+<td>11428 (100%)</td>
+<td>0 (0%)</td>
+<td>11428 (76.2%)</td>
 </tr>
 <tr>
-<td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>0.00 [0.00, 0.00]</td>
-<td class='lastrow'>1.00 [1.00, 1.00]</td>
-<td class='lastrow'>0.00 [0.00, 1.00]</td>
+<td class='rowlabel lastrow'>1</td>
+<td class='lastrow'>0 (0%)</td>
+<td class='lastrow'>3571 (100%)</td>
+<td class='lastrow'>3571 (23.8%)</td>
 </tr>
 <tr>
 <td class='rowlabel firstrow'><span class='varlabel'>satisfaction_level</span></td>
@@ -353,30 +389,30 @@ full
 ```
 
 ```
-       satisfaction_level last_evaluation number_project
-    1:               0.60            0.95              3
-    2:               0.48            0.94              4
-    3:               0.50            0.48              2
-    4:               0.69            0.59              4
-    5:               0.41            0.96              6
-   ---                                                  
-14995:               0.72            0.86              4
-14996:               0.62            0.62              4
-14997:               0.41            0.48              2
-14998:               0.91            0.66              3
-14999:               0.63            0.57              3
-       average_montly_hours time_spend_company Work_accident left
-    1:                  221                  3             0    0
-    2:                  231                  4             0    0
-    3:                  150                  3             1    0
-    4:                  264                  3             0    0
-    5:                  171                  5             1    0
-   ---                                                           
-14995:                  191                  2             0    0
-14996:                  136                  2             0    0
-14997:                  141                  3             0    1
-14998:                  208                  4             0    0
-14999:                  242                  3             0    0
+       left satisfaction_level last_evaluation number_project
+    1:    0               0.60            0.95              3
+    2:    0               0.48            0.94              4
+    3:    0               0.50            0.48              2
+    4:    0               0.69            0.59              4
+    5:    0               0.41            0.96              6
+   ---                                                       
+14995:    0               0.72            0.86              4
+14996:    0               0.62            0.62              4
+14997:    1               0.41            0.48              2
+14998:    0               0.91            0.66              3
+14999:    0               0.63            0.57              3
+       average_montly_hours time_spend_company Work_accident
+    1:                  221                  3             0
+    2:                  231                  4             0
+    3:                  150                  3             1
+    4:                  264                  3             0
+    5:                  171                  5             1
+   ---                                                      
+14995:                  191                  2             0
+14996:                  136                  2             0
+14997:                  141                  3             0
+14998:                  208                  4             0
+14999:                  242                  3             0
        promotion_last_5years       sales salary
     1:                     0       sales    low
     2:                     0   marketing medium
@@ -454,16 +490,16 @@ table1(~ left +
 <td class='firstrow'></td>
 </tr>
 <tr>
-<td class='rowlabel'>Mean (SD)</td>
-<td>0.00 (0.00)</td>
-<td>1.00 (0.00)</td>
-<td>0.238 (0.426)</td>
+<td class='rowlabel'>0</td>
+<td>11428 (100%)</td>
+<td>0 (0%)</td>
+<td>11428 (76.2%)</td>
 </tr>
 <tr>
-<td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>0.00 [0.00, 0.00]</td>
-<td class='lastrow'>1.00 [1.00, 1.00]</td>
-<td class='lastrow'>0.00 [0.00, 1.00]</td>
+<td class='rowlabel lastrow'>1</td>
+<td class='lastrow'>0 (0%)</td>
+<td class='lastrow'>3571 (100%)</td>
+<td class='lastrow'>3571 (23.8%)</td>
 </tr>
 <tr>
 <td class='rowlabel firstrow'><span class='varlabel'>satisfaction_level</span></td>
@@ -595,49 +631,15 @@ table1(~ left +
 </table>
 </div><!--/html_preserve-->
 
+
+
 ```r
-full
-```
+ggpair.after <- GGally::ggpairs(full, aes(color = left, point_alpha = 0.3, alpha = 0.5),
+                                 upper = list(continuous = "density"),
+                                 progress = FALSE)
 
+ggsave(ggpair.after, filename = "./output/image.files/000_ggpair_after.png", width = 6, height = 5)
 ```
-       satisfaction_level last_evaluation number_project
-    1:             0.6452          0.6278              4
-    2:             0.3525          0.7113             10
-    3:             0.6348          0.2675              9
-    4:             0.6846          0.2840             11
-    5:             0.3489          0.7724              8
-   ---                                                  
-14995:             0.4643          0.6384             10
-14996:             0.5480          0.6050              6
-14997:             0.2996          0.1258              8
-14998:             0.7682          0.5239              8
-14999:             0.6940          0.3209              8
-       average_montly_hours time_spend_company Work_accident left
-    1:                  291                  5             0    0
-    2:                  306                  5             0    0
-    3:                  203                  3             1    0
-    4:                  329                  6             0    0
-    5:                  243                  9             1    0
-   ---                                                           
-14995:                  195                  3             0    0
-14996:                  174                  3             0    0
-14997:                  223                  4             0    1
-14998:                  207                  8             0    0
-14999:                  320                  3             0    0
-       promotion_last_5years       sales salary
-    1:                     0       sales    low
-    2:                     0   marketing medium
-    3:                     0   technical    low
-    4:                     0       sales medium
-    5:                     0     support medium
-   ---                                         
-14995:                     0       RandD    low
-14996:                     0       sales medium
-14997:                     0          IT    low
-14998:                     0       sales medium
-14999:                     0 product_mng    low
-```
-
 
 # Save data and model
 

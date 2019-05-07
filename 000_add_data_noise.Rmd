@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: "add noise to data"
+title: "add noise on data"
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -38,13 +38,17 @@ set.seed(1)
 ```{r install.requirements, eval = FALSE}
 install.packages("tidyverse",   dependencies = TRUE)
 install.packages("table1",      dependencies = TRUE)
+install.packages("GGally",      dependencies = TRUE)
 
 ```
 
 ```{r require.packages, message=FALSE}
 require(tidyverse)
+require(magrittr)
 require(data.table)
 require(table1)
+require(MASS)
+require(GGally)
 
 ```
 
@@ -77,8 +81,23 @@ Source data in this sample is from : https://github.com/ryankarlos/Human-Resourc
 
 ```{r}
 full = fread('./input/HR_comma_sep.csv', stringsAsFactors = T)
-
+full <- full %>%
+  mutate(left = factor(left)) %>% 
+  dplyr::select(left, everything()) %>% 
+  as.data.table()
+full %>% str
 ```
+
+```{r, eval=FALSE}
+ggpair.before <- GGally::ggpairs(full, 
+                                 aes(color = left, point_alpha = 0.3, alpha = 0.5),
+                                 upper = list(continuous = "density"),
+                                 progress = FALSE)
+
+ggsave(ggpair.before, filename = "./output/image.files/000_ggpair_before.png", width = 6, height = 5)
+```
+
+![](./output/image.files/000_ggpair_before.png)
 
 ```{r}
 table1(~ left +
@@ -95,13 +114,7 @@ table1(~ factor(sales) + factor(salary)
 
 ```
 
-# Shuffle rows
 
-```{r}
-full = full[sample(.N)]
-full
-```
- 
  # add Random Noise (to continuous feature)
  
 ```{r}
@@ -146,6 +159,23 @@ table1(~ left +
          average_montly_hours + time_spend_company + 
          Work_accident + promotion_last_5years 
        | left, data = full)
+```
+
+
+```{r, eval=FALSE}
+ggpair.after <- GGally::ggpairs(full, aes(color = left, point_alpha = 0.3, alpha = 0.5),
+                                 upper = list(continuous = "density"),
+                                 progress = FALSE)
+
+ggsave(ggpair.after, filename = "./output/image.files/000_ggpair_after.png", width = 6, height = 5)
+```
+
+![](./output/image.files/000_ggpair_after.png)
+
+# Shuffle rows
+
+```{r}
+full = full[sample(.N)]
 full
 ```
 

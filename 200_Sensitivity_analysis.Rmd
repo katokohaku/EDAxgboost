@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: rule extraction from xgboost model"
+title: Sensitivity Analysis for xgboost model"
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -56,7 +56,7 @@ loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 # loaded.obs %>% str
 model.xgb   <- loaded.obs$model$xgb 
 
-train.label <- loaded.obs$data$train$label
+train.label  <- loaded.obs$data$train$label
 train.matrix <- loaded.obs$data$train$matrix
 train.xgb.DMatrix <- xgb.DMatrix("./middle/train.xgbDMatrix")
 

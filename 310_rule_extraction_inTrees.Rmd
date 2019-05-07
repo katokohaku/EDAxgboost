@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: "rule extraction from xgboost model"
+title: rule extraction from xgboost model (using inTrees)
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
