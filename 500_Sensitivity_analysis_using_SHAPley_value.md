@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: individual explanation using Shapley value
-date: "2019/05/07"
+date: "2019/05/08"
 output:
   html_document:
     fig_caption: yes
@@ -189,18 +189,42 @@ With `predinteraction = TRUE`, SHAP values of contributions of interaction of ea
 predinteraction.xgb <- xgboost:::predict.xgb.Booster(
   model.xgb, newdata = train.matrix, 
   predinteraction = TRUE)
-```
 
-```r
 predinteraction.xgb %>% str
  num [1:4000, 1:10, 1:10] -1.055 -1.159 0.114 1.339 -1.195 ...
  - attr(*, "dimnames")=List of 3
   ..$ : NULL
   ..$ : chr [1:10] "satisfaction_level" "last_evaluation" "number_project" "average_montly_hours" ...
   ..$ : chr [1:10] "satisfaction_level" "last_evaluation" "number_project" "average_montly_hours" ...
-mea.interaction <- apply(abs(predinteraction.xgb), 2:3, sum) / NROW(predinteraction.xgb)
+```
 
-mea.interaction %>% 
+
+## Interaction of single observation
+
+
+```r
+idx = 1
+predinteraction.xgb[idx, ,] %>% 
+  data.frame %>% 
+  rownames_to_column("feature") %>% 
+  gather(key = interact, value = value, -feature) %>% 
+  mutate_at(vars(feature, interact), as.factor) %>% 
+  ggplot(aes(x = feature, y = interact, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(midpoint = 0, 
+                       low="blue", mid = "white", high="red") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
+## Average interaction of all observation
+
+
+```r
+mean.interaction <- apply(abs(predinteraction.xgb), 2:3, sum) / NROW(predinteraction.xgb)
+
+mean.interaction %>% 
   data.frame %>% 
   rownames_to_column("feature") %>% 
   gather(key = interact, value = value, -feature) %>% 
@@ -211,5 +235,5 @@ mea.interaction %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 

@@ -281,10 +281,11 @@ res <- list(
     xgb = model.xgb
   )
 )
- 
+
+if(! dir.exists("./middle/")) {
+  dir.create("./middle/")
+}
 saveRDS(res, file = "./middle/data_and_model.Rds")
-xgb.DMatrix.save(train.xgb.DMatrix, fname = "./middle/train.xgbDMatrix")
-xgb.DMatrix.save(test.xgb.DMatrix,  fname = "./middle/test.xgbDMatrix")
 
 ```
 

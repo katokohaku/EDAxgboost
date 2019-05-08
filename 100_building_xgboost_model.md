@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "building xgboost model"
-date: "2019/05/04"
+date: "2019/05/08"
 output:
   html_document:
     fig_caption: yes
@@ -53,13 +53,13 @@ require(DALEX)
 HR_data <- read.csv("./input/HR_shuffle_and_noise.csv", header = TRUE)
 HR_data %>% str
 #> 'data.frame':	14999 obs. of  10 variables:
+#>  $ left                 : int  0 0 0 0 0 0 0 0 0 1 ...
 #>  $ satisfaction_level   : num  0.645 0.352 0.635 0.685 0.349 ...
 #>  $ last_evaluation      : num  0.628 0.711 0.268 0.284 0.772 ...
 #>  $ number_project       : int  4 10 9 11 8 5 12 6 11 12 ...
 #>  $ average_montly_hours : int  291 306 203 329 243 265 320 204 195 275 ...
 #>  $ time_spend_company   : int  5 5 3 6 9 10 4 4 6 5 ...
 #>  $ Work_accident        : int  0 0 1 0 1 1 0 0 0 0 ...
-#>  $ left                 : int  0 0 0 0 0 0 0 0 0 1 ...
 #>  $ promotion_last_5years: int  0 0 0 0 0 0 0 0 0 0 ...
 #>  $ sales                : Factor w/ 10 levels "accounting","hr",..: 8 5 10 8 9 4 8 10 10 8 ...
 #>  $ salary               : Factor w/ 3 levels "high","low","medium": 2 3 2 3 3 3 3 2 2 3 ...
@@ -626,10 +626,11 @@ res <- list(
     xgb = model.xgb
   )
 )
- 
+
+if(! dir.exists("./middle/")) {
+  dir.create("./middle/")
+}
 saveRDS(res, file = "./middle/data_and_model.Rds")
-xgb.DMatrix.save(train.xgb.DMatrix, fname = "./middle/train.xgbDMatrix")
-xgb.DMatrix.save(test.xgb.DMatrix,  fname = "./middle/test.xgbDMatrix")
 ```
 
 
