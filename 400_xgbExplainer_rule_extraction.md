@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: individual explanation using xgboostExplainer
-date: "2019/05/07"
+date: "2019/05/08"
 output:
   html_document:
     fig_caption: yes
@@ -267,6 +267,7 @@ mapping.tsne %>%
 ```
 
 ![](400_xgbExplainer_rule_extraction_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
+
 ## Hierarchical clustering
 
 
@@ -290,17 +291,22 @@ Number of objects: 4000
 
 
 ```r
-cut.off = 5
+library(ggdendro)
 
-png(filename = "./output/image.files/400_hclust_rules.png",
-    height = 1200, width = 800)
-xgb.breakdown.tsne.hc %>%
-  as.dendrogram() %>%
-  plot(horiz = TRUE)
-abline(v = cut.off, col = "red", lwd = 2, lty = 3)
-dev.off()
-png 
-  2 
+cut.off = 5
+# 
+# png(filename = "./output/image.files/400_hclust_rules.png",
+#     height = 1200, width = 800)
+# xgb.breakdown.tsne.hc %>%
+#   as.dendrogram() %>%
+#   plot(horiz = TRUE)
+# abline(v = cut.off, col = "red", lwd = 2, lty = 3)
+# dev.off()
+
+ggd.breakdown <- ggdendrogram(xgb.breakdown.tsne.hc, rotate = TRUE, size = 2) +
+  geom_hline(yintercept = cut.off, color = "red")
+ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules.png",
+    height = 12, width = 7)
 ```
 ![](./output/image.files/400_hclust_rules.png)
 

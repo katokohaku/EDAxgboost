@@ -25,7 +25,7 @@ knitr::opts_knit$set(progress = TRUE,
                      verbose  = TRUE, 
                      root.dir = ".")
 
-knitr::opts_chunk$set(collapse = TRUE, 
+knitr::opts_chunk$set(collapse = FALSE, 
                       comment = "#>", 
                       message = TRUE, 
                       warning = FALSE, 
@@ -88,10 +88,6 @@ table1(~ factor(sales) + factor(salary)
 ```{r data.prep}
 set.seed(1234567)
 trainset.size = 4000
-
-# HR.dummy <- HR_data %>% 
-#   dummy_cols(select_columns = c("sales", "salary"), remove_first_dummy = FALSE) %>% 
-#   select(-sales, -salary, -sales_management, -salary_high)
 
 HR.dummy <- HR_data %>%
   mutate(sales = factor(sales) %>% as.integer(),

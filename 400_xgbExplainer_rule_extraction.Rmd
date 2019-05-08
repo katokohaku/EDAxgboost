@@ -194,6 +194,7 @@ mapping.tsne %>%
     geom_point(alpha = 0.3) + theme_bw() +
   scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
 ```
+
 ## Hierarchical clustering
 
 ```{r clustering}
@@ -208,15 +209,23 @@ xgb.breakdown.tsne.hc
 ### explore cut.off for cutree
 
 ```{r}
-cut.off = 5
+library(ggdendro)
 
-png(filename = "./output/image.files/400_hclust_rules.png",
-    height = 1200, width = 800)
-xgb.breakdown.tsne.hc %>%
-  as.dendrogram() %>%
-  plot(horiz = TRUE)
-abline(v = cut.off, col = "red", lwd = 2, lty = 3)
-dev.off()
+cut.off = 5
+# 
+# png(filename = "./output/image.files/400_hclust_rules.png",
+#     height = 1200, width = 800)
+# xgb.breakdown.tsne.hc %>%
+#   as.dendrogram() %>%
+#   plot(horiz = TRUE)
+# abline(v = cut.off, col = "red", lwd = 2, lty = 3)
+# dev.off()
+
+ggd.breakdown <- ggdendrogram(xgb.breakdown.tsne.hc, rotate = TRUE, size = 2) +
+  geom_hline(yintercept = cut.off, color = "red")
+ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules.png",
+    height = 12, width = 7)
+
 ```
 ![](./output/image.files/400_hclust_rules.png)
 

@@ -32,7 +32,6 @@ install.packages("tidyverse",   dependencies = TRUE)
 install.packages("AUC",         dependencies = TRUE)
 
 install.packages("caret", dependencies = FALSE)
-
 ```
 
 
@@ -52,6 +51,9 @@ require(DALEX)
 ```r
 HR_data <- read.csv("./input/HR_shuffle_and_noise.csv", header = TRUE)
 HR_data %>% str
+```
+
+```
 #> 'data.frame':	14999 obs. of  10 variables:
 #>  $ left                 : int  0 0 0 0 0 0 0 0 0 1 ...
 #>  $ satisfaction_level   : num  0.645 0.352 0.635 0.685 0.349 ...
@@ -352,10 +354,6 @@ table1(~ factor(sales) + factor(salary)
 set.seed(1234567)
 trainset.size = 4000
 
-# HR.dummy <- HR_data %>% 
-#   dummy_cols(select_columns = c("sales", "salary"), remove_first_dummy = FALSE) %>% 
-#   select(-sales, -salary, -sales_management, -salary_high)
-
 HR.dummy <- HR_data %>%
   mutate(sales = factor(sales) %>% as.integer(),
          salary= factor(salary, levels = c("low","medium","high")) %>% as.integer())
@@ -371,10 +369,15 @@ train.label  <- HR.dummy[train.i, ]$left
 train.matrix <- train.df %>% select(-left) %>% as.matrix()
 train.xgb.DMatrix <- xgb.DMatrix(train.matrix, label = train.label, missing = NA)
 table(train.label)
+```
+
+```
 #> train.label
 #>    0    1 
 #> 2000 2000
+```
 
+```r
 test.pi <- setdiff(pos.i, train.pi)
 test.ni <- setdiff(neg.i, train.ni)
 test.i  <- c(test.pi, test.ni)
@@ -383,6 +386,9 @@ test.matrix <- test.df %>% select(-left) %>% as.matrix()
 test.label  <- HR.dummy[test.i, ]$left
 test.xgb.DMatrix <- xgb.DMatrix(test.matrix, missing = NA)
 table(test.label)
+```
+
+```
 #> test.label
 #>    0    1 
 #> 9428 1571
@@ -421,6 +427,9 @@ cv <- xgb.cv(params  = params,
              early_stopping_rounds = 10)
 
 print(cv, verbose=TRUE)
+```
+
+```
 #> ##### xgb.cv 5-folds
 #> call:
 #>   xgb.cv(params = params, data = train.xgb.DMatrix, nrounds = 2000, 
@@ -450,7 +459,9 @@ print(cv, verbose=TRUE)
 #> Best iteration:
 #>  iter train_auc_mean train_auc_std test_auc_mean test_auc_std
 #>   173       0.958597   0.001356155      0.919394  0.008533882
+```
 
+```r
 cv$evaluation_log %>% 
   select(-ends_with("_std")) %>% 
   tidyr::gather(key = data, value = auc, train_auc_mean, test_auc_mean) %>%
@@ -480,6 +491,9 @@ test.pred <- predict(model.xgb, test.xgb.DMatrix)
 table(prediction = ifelse(test.pred > 0.5, 1, 0), 
       truth      = test.label) %>% 
   caret::confusionMatrix()
+```
+
+```
 #> Confusion Matrix and Statistics
 #> 
 #>           truth
@@ -519,6 +533,9 @@ png("./output/image.files/010_AUCROC_fullmodel.png", width = 480, height = 480)
 plot(test.roc, col = "red", lwd = 2,
      main = sprintf("test set AUCROC = %.03f", auc(test.roc)))
 dev.off()
+```
+
+```
 #> png 
 #>   2
 ```
@@ -566,6 +583,9 @@ var.imp <- xgb.importance(model = model.xgb,
                           feature_names = dimnames(train.xgb.DMatrix)[[2]])
 
 var.imp %>% mutate_if(is.numeric, round, digits = 4)
+```
+
+```
 #>                 Feature   Gain  Cover Frequency
 #> 1    satisfaction_level 0.3111 0.2191    0.2150
 #> 2       last_evaluation 0.2117 0.1746    0.2066
@@ -576,8 +596,14 @@ var.imp %>% mutate_if(is.numeric, round, digits = 4)
 #> 7         Work_accident 0.0293 0.0474    0.0212
 #> 8                 sales 0.0160 0.0464    0.0638
 #> 9 promotion_last_5years 0.0018 0.0126    0.0057
+```
+
+```r
 ggp.var.imp <- xgb.ggplot.importance(var.imp)
 ggsave(ggp.var.imp, filename = "./output/image.files/010_importance_xgb.png")
+```
+
+```
 #> Saving 7 x 5 in image
 ```
 
@@ -596,6 +622,9 @@ explainer.xgb <- DALEX::explain(model.xgb,
 vd.xgb <- variable_importance(explainer.xgb, type = "raw")
 ggp.vd.xgb <- plot(vd.xgb)
 ggsave(ggp.vd.xgb, filename = "./output/image.files/010_importance_perm.png")
+```
+
+```
 #> Saving 7 x 5 in image
 ```
 
