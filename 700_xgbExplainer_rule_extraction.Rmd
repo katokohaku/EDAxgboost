@@ -1,0 +1,302 @@
+---
+author: "Satoshi Kato"
+title: individual explanation using xgboostExplainer
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    keep_md: yes
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = TRUE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("devtools", dependencies = TRUE)
+devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
+
+install.packages("ggridges", dependencies = TRUE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(magrittr)
+require(data.table)
+require(xgboost)
+require(xgboostExplainer)
+require(ggridges)
+
+
+```
+
+# Preparation 
+
+```{r load.model.and.data}
+loaded.obs  <- readRDS("./middle/data_and_model.Rds")
+
+model.xgb   <- loaded.obs$model$xgb 
+
+train.label <- loaded.obs$data$train$label
+train.matrix <- loaded.obs$data$train$matrix
+train.xgb.DMatrix <- xgb.DMatrix(train.matrix, label = train.label, missing = NA)
+
+test.label  <- loaded.obs$data$test$label
+test.matrix <- loaded.obs$data$test$matrix
+test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
+
+```
+
+# breakdown obsavation
+
+## Using xgboostExplainer
+
+see https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
+
+
+```{r, results="hide", eval=FALSE}
+explainer.xgb <-  buildExplainer(xgb.model    = model.xgb, 
+                                 trainingData = train.xgb.DMatrix, 
+                                 type         = "binary",
+                                 base_score   = 0.5,
+                                 trees_idx    = NULL)
+saveRDS(explainer.xgb,file = "./middle/400_explainer_xgb.Rds")
+```
+
+```{r}
+explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
+
+```
+
+```{r}
+explainer.xgb %>% head() %>% round(digits = 4)
+```
+
+## extract explaination path
+
+```{r}
+predleaf.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix, predleaf = TRUE)
+
+predleaf.xgb[1:6, 1:12]
+```
+
+```{r, eval = FALSE}
+xgb.breakdown <- explainPredictions(xgb.model = model.xgb,
+                                    explainer = explainer.xgb,
+                                    data      = train.xgb.DMatrix)
+saveRDS(xgb.breakdown, file = "./middle/400_xgb_breakdown.Rds")
+
+```
+
+```{r}
+xgb.breakdown <- readRDS("./middle/400_xgb_breakdown.Rds")
+xgb.breakdown %>% head() %>% knitr::kable(digits = 4)
+
+weight     <- rowSums(xgb.breakdown)
+prediction <- 1/(1 + exp(-weight))
+
+```
+
+This is almost the same result as: `xgboost:::predict.xgb.Booster(...,   predcontrib = TRUE, approxcontrib = TRUE)`
+
+According to help(xgboost:::predict.xgb.Booster)@Details
+
+Setting `predcontrib = TRUE` + `approxcontrib = TRUE` approximates these values following the idea explained in http://blog.datadive.net/interpreting-random-forests/.
+
+```{r}
+prediction.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix)
+
+approxcontrib.xgb <- xgboost:::predict.xgb.Booster(
+  model.xgb, newdata = train.matrix, 
+  predcontrib = TRUE, approxcontrib = TRUE)
+
+approxcontrib.xgb %>% head() %>% knitr::kable(digits = 4)
+
+prediction.xgb %>% head()
+weight.app <- approxcontrib.xgb %>% head %>% rowSums()
+weight.app
+1/(1 + exp(-weight.app))
+
+```
+
+## explain single observation
+
+```{r, results="hide", message=FALSE, eval = FALSE}
+sw <- showWaterfall(
+  idx = 1,
+  xgb.model   = model.xgb, 
+  explainer   = explainer.xgb, 
+  DMatrix     = train.xgb.DMatrix, 
+  data.matrix = train.matrix)
+
+ggsave(sw, filename = "output/image.files/400_explain_single_obs.png",
+       width = 5, height = 3.5)
+
+```
+
+![](output/image.files/400_explain_single_obs.png)
+
+
+# clustering of extracted rules
+
+## dimension reduction using t-SNE
+
+according to :
+http://jmonlong.github.io/Hippocamplus/2017/12/02/tsne-and-clustering/
+
+```{r}
+require(Rtsne)
+# xgb.breakdown %>% str
+
+xgb.breakdown.tsne <- xgb.breakdown %>% 
+  select(-intercept) %>%
+  Rtsne(perplexity = 300, check_duplicates = FALSE)
+
+xgb.breakdown.tsne %>% str
+
+mapping.tsne <- data.frame(
+  id     = 1:length(prediction),
+  tsne1  = xgb.breakdown.tsne$Y[, 1],
+  tsne2  = xgb.breakdown.tsne$Y[, 2],
+  pred   = prediction,
+  weight = weight)
+```
+
+```{r}
+mapping.tsne %>% 
+  ggplot(aes(x = tsne1, y = tsne2, colour = prediction)) + 
+    geom_point(alpha = 0.3) + theme_bw() +
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
+```
+
+## Hierarchical clustering
+
+```{r clustering}
+xgb.breakdown.tsne.hc <- mapping.tsne %>% 
+  select(-id) %>% 
+  as.matrix() %>% 
+  dist() %>% 
+  hclust()
+xgb.breakdown.tsne.hc
+```
+
+### explore cut.off for cutree
+
+```{r}
+library(ggdendro)
+
+cut.off = 5
+
+ggd.breakdown <- ggdendrogram(xgb.breakdown.tsne.hc, rotate = TRUE, size = 2) +
+  geom_hline(yintercept = cut.off, color = "red")
+ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules.png",
+    height = 12, width = 7)
+
+```
+![](./output/image.files/400_hclust_rules.png)
+
+```{r}
+# install.packages("ggrepel", dependencies = TRUE)
+require(ggrepel)
+
+mapping.tsne$hclust <- xgb.breakdown.tsne.hc %>%
+  cutree(h = cut.off) %>%
+  factor()
+
+hc.cent <- mapping.tsne %>% 
+  group_by(hclust) %>%
+  select(tsne1, tsne2) %>% 
+  summarize_all(mean)
+
+mapping.tsne %>% 
+  ggplot(aes(x = tsne1, y = tsne2, colour = hclust)) + 
+  geom_point(alpha = 0.3) + 
+  theme_bw() +
+  ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
+  guides(colour = FALSE)
+```
+
+
+## View rules in several group
+
+```{r, eval=FALSE}
+hclust.id = 1
+sample.n  = 6
+
+target <- mapping.tsne %>% 
+  filter(hclust == hclust.id) %>% 
+  arrange(desc(pred))
+
+sw <- list(NULL)
+for(i in 1:sample.n){
+  
+  sw[[i]] <- showWaterfall(
+    idx = target$id[i],
+    xgb.model   = model.xgb, 
+    explainer   = explainer.xgb, 
+    DMatrix     = train.xgb.DMatrix, 
+    data.matrix = train.matrix) +
+    ggtitle(sprintf("predict = %.04f\nweight = %.04f",
+                    target$predict[i], target$weight[i]))
+}
+
+ggp.sw <- gridExtra::grid.arrange(grobs = sw, ncol = 3)
+fn = sprintf("./output/image.files/400_rules_cl%i.png", hclust.id)
+ggsave(ggp.sw, filename = fn, height = 6)
+```
+
+![](./output/image.files/400_rules_cl1.png)
+
+```{r, eval=FALSE}
+hclust.id = 17
+sample.n  = 6
+
+target <- mapping.tsne %>% 
+  filter(hclust == hclust.id) %>% 
+  arrange(desc(pred))
+
+sw <- list(NULL)
+for(i in 1:sample.n){
+  
+  sw[[i]] <- showWaterfall(
+    idx = target$id[i],
+    xgb.model   = model.xgb, 
+    explainer   = explainer.xgb, 
+    DMatrix     = train.xgb.DMatrix, 
+    data.matrix = train.matrix) +
+    ggtitle(sprintf("predict = %.04f\nweight = %.04f",
+                    target$predict[i], target$weight[i]))
+}
+
+ggp.sw <- gridExtra::grid.arrange(grobs = sw, ncol = 3)
+fn = sprintf("./output/image.files/400_rules_cl%i.png", hclust.id)
+ggsave(ggp.sw, filename = fn, height = 6)
+```
+
+![](./output/image.files/400_rules_cl17.png)
