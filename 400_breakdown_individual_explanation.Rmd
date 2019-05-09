@@ -73,60 +73,25 @@ test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
 
 # breakdown obsavation
 
-## Using xgboostExplainer
+## Using built-in predict() function.
 
-see https://medium.com/applied-data-science/new-r-package-the-xgboost-explainer-51dd7d1aa211
+### `predleaf = TRUE`	
 
+predict leaf index.
 
-```{r, results="hide", eval=FALSE}
-explainer.xgb <-  buildExplainer(xgb.model    = model.xgb, 
-                                 trainingData = train.xgb.DMatrix, 
-                                 type         = "binary",
-                                 base_score   = 0.5,
-                                 trees_idx    = NULL)
-saveRDS(explainer.xgb,file = "./middle/400_explainer_xgb.Rds")
-```
+### `predcontrib = TRUE, approxcontrib = FALSE`	
 
-```{r}
-explainer.xgb <- readRDS("./middle/400_explainer_xgb.Rds")
+allows to calculate contributions of each feature to individual predictions. 
 
-```
+*  For "gblinear" booster, feature contributions are simply linear terms (feature_beta * feature_value). 
+*  For "gbtree" booster, feature contributions are SHAP values (Lundberg 2017) that sum to the difference between the expected output of the model and the current prediction (where the hessian weights are used to compute the expectations).
 
-```{r}
-explainer.xgb %>% head() %>% round(digits = 4)
-```
+### `predcontrib = TRUE, approxcontrib = TRUE`	
 
-## extract explaination path
+For "gbtree" booster, SHAP values are approximated by structureal based. The contribution of each feature is not a single predetermined value, but depends on the rest of the feature vector which determines the decision path that traverses the tree and thus the guards/contributions that are passed along the way.
 
-```{r}
-predleaf.xgb <- xgboost:::predict.xgb.Booster(
-  model.xgb, newdata = train.matrix, predleaf = TRUE)
+see: http://blog.datadive.net/interpreting-random-forests/
 
-predleaf.xgb[1:6, 1:12]
-```
-
-```{r, eval = FALSE}
-xgb.breakdown <- explainPredictions(xgb.model = model.xgb,
-                                    explainer = explainer.xgb,
-                                    data      = train.xgb.DMatrix)
-saveRDS(xgb.breakdown, file = "./middle/400_xgb_breakdown.Rds")
-
-```
-
-```{r}
-xgb.breakdown <- readRDS("./middle/400_xgb_breakdown.Rds")
-xgb.breakdown %>% head() %>% knitr::kable(digits = 4)
-
-weight     <- rowSums(xgb.breakdown)
-prediction <- 1/(1 + exp(-weight))
-
-```
-
-This is almost the same result as: `xgboost:::predict.xgb.Booster(...,   predcontrib = TRUE, approxcontrib = TRUE)`
-
-According to help(xgboost:::predict.xgb.Booster)@Details
-
-Setting `predcontrib = TRUE` + `approxcontrib = TRUE` approximates these values following the idea explained in http://blog.datadive.net/interpreting-random-forests/.
 
 ```{r}
 prediction.xgb <- xgboost:::predict.xgb.Booster(

@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: individual explanation using Shapley value
-date: "2019/05/08"
+date: "2019/05/09"
 output:
   html_document:
     fig_caption: yes
@@ -81,28 +81,22 @@ predShap.xgb <- xgboost:::predict.xgb.Booster(
   predcontrib = TRUE, approxcontrib = FALSE) %>% 
   data.frame()
 
-predShap.xgb %>% head
-  satisfaction_level last_evaluation number_project average_montly_hours
-1         -0.5154362      0.12135819    -0.02269111            0.8720583
-2         -0.5866774      0.36929688     0.43722132           -0.1261309
-3          0.5254808      0.05798297    -0.09518056           -0.1315848
-4          2.0530305     -0.39907283     0.09628574            0.3937185
-5         -0.6547130      0.29177108    -0.14195386           -0.2027319
-6          0.5396414      0.77926862     0.24958663            0.4527313
-  time_spend_company Work_accident promotion_last_5years        sales
-1          0.9241912    0.10072314           0.006513606 -0.089338966
-2          0.1747154    0.08905636           0.006683344  0.129772797
-3          0.1498220    0.10996064           0.004951648 -0.278872371
-4         -0.2945797    0.11459066           0.005639516  0.240690008
-5          0.1329388    0.10154230           0.005447830  0.115754075
-6          0.1321256    0.08253264           0.005230132  0.001881685
-      salary        BIAS
-1 -0.2184017 -0.00516879
-2 -0.1669738 -0.00516879
-3  0.4077091 -0.00516879
-4  0.2478194 -0.00516879
-5  0.3563153 -0.00516879
-6  0.2745785 -0.00516879
+predShap.xgb %>% head(4) %>% t
+                                 1            2            3            4
+satisfaction_level    -0.515436172 -0.586677372  0.525480807  2.053030491
+last_evaluation        0.121358186  0.369296879  0.057982970 -0.399072826
+number_project        -0.022691106  0.437221318 -0.095180556  0.096285738
+average_montly_hours   0.872058332 -0.126130879 -0.131584838  0.393718511
+time_spend_company     0.924191236  0.174715430  0.149822012 -0.294579685
+Work_accident          0.100723140  0.089056358  0.109960638  0.114590660
+promotion_last_5years  0.006513606  0.006683344  0.004951648  0.005639516
+sales                 -0.089338966  0.129772797 -0.278872371  0.240690008
+salary                -0.218401656 -0.166973829  0.407709092  0.247819394
+BIAS                  -0.005168790 -0.005168790 -0.005168790 -0.005168790
+```
+
+
+```r
 prediction.xgb %>% head
 [1] 0.7638327 0.5797617 0.6781101 0.9207772 0.4998003 0.9250071
 weight.shap <- predShap.xgb %>% head %>% rowSums()
@@ -117,18 +111,18 @@ weight.shap
 
 ```r
 source("./R/waterfallBreakdown.R")
-breakdown <- list(
-  type = "binary",
-  weight = weight.shap[1],
-  breakdown_summary = unlist(predShap.xgb[1, ]),
-  labels = colnames(predShap.xgb)
-)
-ggp.shap <- waterfallBreakdown(breakdown) + ggtitle("SHAP estimates")
-ggsave(ggp.shap, filename = "./output/image.files/210_breakdownSHAP.png",
+
+ggp.shap <- waterfallBreakdown(
+  breakdown = unlist(predShap.xgb[1, ]), type = "binary",
+  labels = paste(colnames(predShap.xgb), 
+                 c(train.matrix[1, ],""), sep =" = ")) +
+  ggtitle("SHAP estimates")
+
+ggsave(ggp.shap, filename = "./output/image.files/500_breakdownSHAP.png",
        width = 5, height = 3.5)
 ```
 
-![](output/image.files/210_breakdownSHAP.png)
+![](output/image.files/500_breakdownSHAP.png)
 
 
 # SHAP contribution dependency plots
@@ -178,7 +172,7 @@ feature.impact %>%
   scale_color_gradient2(midpoint = 0.5, low="blue", mid="grey", high="red")
 ```
 
-![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
 
 # SHAP values of contributions of interaction of each pair of features 
 
@@ -216,7 +210,7 @@ predinteraction.xgb[idx, ,] %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 
 ## Average interaction of all observation
 
@@ -235,5 +229,5 @@ mean.interaction %>%
   theme(axis.text.x = element_text(angle = 90))
 ```
 
-![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+![](500_Sensitivity_analysis_using_SHAPley_value_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
 
