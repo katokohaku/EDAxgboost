@@ -138,7 +138,7 @@ ggp.shap <- waterfallBreakdown(
   ggtitle("SHAP value")
 
 ggsave(ggp.shap, filename = "./output/image.files/400_explain_single_obs_SHAP.png",
-       width = 5, height = 3.5)
+       width = 3.5, height = 4)
 ```
 
 
@@ -195,7 +195,7 @@ ggp.approxcontrib.xgb <- waterfallBreakdown(
 
 ggsave(ggp.approxcontrib.xgb,
        filename = "./output/image.files/400_explain_single_obs_structure.png",
-       width = 5, height = 3.5)
+       width = 3.5, height = 4)
 ```
 
 
@@ -253,7 +253,7 @@ ggp.tsne <- mapping.tsne %>%
   scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
 
 ggsave(ggp.tsne, filename =  "./output/image.files/400_map_tSNE.png",
-    height = 7, width = 7)
+    height = 5, width = 7)
 ```
 
 ![](output/image.files/400_map_tSNE.png)
