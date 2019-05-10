@@ -278,7 +278,7 @@ system.time(
     predinteraction = TRUE, approxcontrib = FALSE)
 )
    user  system elapsed 
-  43.12    0.01    5.60 
+  50.33    0.02    6.72 
 ```
 
 ### `predinteraction = TRUE, approxcontrib = FALSE`	
@@ -295,11 +295,10 @@ system.time(
     predinteraction = TRUE, approxcontrib = TRUE)
 )
    user  system elapsed 
-   0.73    0.01    0.14 
+   0.75    0.00    0.14 
 ```
 
-## Interaction of single observation
-
+## 2-way feature interaction of single observation
 
 
 ```r
@@ -320,17 +319,40 @@ predinteraction.shap[idx, ,] %>%
 
 ![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-13-1.png)<!-- -->
 
-## Average interaction of all observation
-
+## Mean feature interaction of all observation
 
 
 ```r
-mean.shap <- apply(abs(predinteraction.shap), 2:3, sum) /
+mean.shap <- apply(predinteraction.shap, 2:3, sum) /
   NROW(predinteraction.shap)
-mean.app <- apply(abs(predinteraction.app), 2:3, sum) /
+mean.app <- apply(predinteraction.app, 2:3, sum) /
   NROW(predinteraction.app)
 
 mean.shap %>% 
+  data.frame %>%
+  select(-BIAS) %>% 
+  rownames_to_column("feature") %>% 
+  gather(key = interact, value = value, -feature) %>%
+  filter(feature != "BIAS") %>% 
+  mutate_at(vars(feature, interact), as.factor) %>% 
+  ggplot(aes(x = feature, y = interact, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(midpoint = 0, 
+                       low="blue", mid = "white", high="red") +  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-14-1.png)<!-- -->
+
+## Mean absolute feature interaction of all observation
+
+
+```r
+mafi.shap <- apply(abs(predinteraction.shap), 2:3, sum) /
+  NROW(predinteraction.shap)
+mafi.app  <- apply(abs(predinteraction.app), 2:3, sum) /
+  NROW(predinteraction.app)
+
+mafi.shap %>% 
   data.frame %>%
   select(-BIAS) %>% 
   rownames_to_column("feature") %>% 
@@ -343,5 +365,5 @@ mean.shap %>%
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
-![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-14-1.png)<!-- -->
+![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
 
