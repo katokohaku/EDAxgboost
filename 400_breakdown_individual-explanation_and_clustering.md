@@ -247,13 +247,17 @@ mapping.tsne <- data.frame(
 
 
 ```r
-mapping.tsne %>% 
+ggp.tsne <- mapping.tsne %>% 
   ggplot(aes(x = tsne1, y = tsne2, colour = prediction.xgb)) + 
     geom_point(alpha = 0.3) + theme_bw() +
   scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
+
+ggsave(ggp.tsne, filename =  "./output/image.files/400_map_tSNE.png",
+    height = 7, width = 7)
 ```
 
-![](400_breakdown_individual-explanation_and_clustering_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
+![](output/image.files/400_map_tSNE.png)
+
 
 ## Hierarchical clustering
 
@@ -284,9 +288,11 @@ cut.off = 5
 
 ggd.breakdown <- ggdendrogram(approxcontrib.xgb.tsne.hc, rotate = TRUE, size = 2) +
   geom_hline(yintercept = cut.off, color = "red")
+
 ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules.png",
     height = 12, width = 7)
 ```
+
 ![](./output/image.files/400_hclust_rules.png)
 
 
@@ -305,15 +311,18 @@ hc.cent <- mapping.tsne %>%
   summarize_all(mean)
 Adding missing grouping variables: `hclust`
 
-mapping.tsne %>% 
+map.tsne.labeled <- mapping.tsne %>% 
   ggplot(aes(x = tsne1, y = tsne2, colour = hclust)) + 
   geom_point(alpha = 0.3) + 
   theme_bw() +
   ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
   guides(colour = FALSE)
+
+ggsave(map.tsne.labeled, filename =  "./output/image.files/400_map_tSNE_labeled.png",
+    height = 7, width = 7)
 ```
 
-![](400_breakdown_individual-explanation_and_clustering_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
+![](output/image.files/400_map_tSNE_labeled.png)
 
 
 ## View rules in several group

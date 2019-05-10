@@ -107,16 +107,20 @@ feature.impact <- data.frame(value  = train.df$satisfaction_level,
                              structure = approxcontrib.xgb$satisfaction_level) %>% 
   gather(key = type, value = impact, -value)
 
-feature.impact %>% 
+ggp.sens.fi <- feature.impact %>% 
   ggplot(aes(x = value, y = impact)) + 
   geom_point(alpha = 0.7) +
+  geom_smooth() +
   facet_grid(. ~ type) +
   labs(x = "satisfaction_level", y = "Feature impact on log-odds") +
   theme_bw()
+
+ggsave(ggp.sens.fi, filename =  "./output/image.files/410_feature_impact_1.png",
+    height = 4, width = 7)
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
 ```
 
-![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
-
+![](./output/image.files/410_feature_impact_1.png)
 
 ## example 2-1: last_evaluation
 
@@ -131,31 +135,41 @@ feature.impact <- data.frame(value  = train.df$last_evaluation,
 
 
 ```r
-feature.impact %>% 
+ggp.sens.fi <- feature.impact %>% 
   ggplot(aes(x = value, y = impact)) + 
   geom_point(alpha = 0.7) +
+  geom_smooth() +
   facet_grid(. ~ type) +
   labs(x = "last_evaluation", y = "Feature impact on log-odds") +
   theme_bw()
+
+ggsave(ggp.sens.fi, filename =  "./output/image.files/410_feature_impact_2-1.png",
+    height = 4, width = 7)
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
 ```
 
-![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+![](./output/image.files/410_feature_impact_2-1.png)
 
 
 ## example 2-2: last_evaluation x satisfaction_level
 
 
 ```r
-feature.impact %>% 
+ggp.sens.fi <- feature.impact %>% 
   ggplot(aes(x = value, y = impact, color = satisfaction_level)) + 
   geom_point(alpha = 0.7) +
+  geom_smooth() +
   facet_grid(. ~ type) +
   labs(x = "last_evaluation", y = "Feature impact on log-odds") +
   theme_bw() + 
   scale_color_gradient2(midpoint = 0.5, low="blue", mid="grey", high="red")
+
+ggsave(ggp.sens.fi, filename =  "./output/image.files/410_feature_impact_2-2.png",
+    height = 4, width = 7)
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
 ```
 
-![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+![](./output/image.files/410_feature_impact_2-2.png)
 
 
 ## Average feature responce
@@ -173,7 +187,7 @@ Note: SHAP contributions are shown on the scale of model margin. E.g., for a log
 
 
 ```r
-png(filename = "./output/image.files/410_varresp_SHAP.png", width = 1200, height = 400, pointsize = 24)
+png(filename = "./output/image.files/410_varresp_SHAP.png", width = 1200, height = 320, pointsize = 24)
 shap <- xgb.plot.shap(data  = train.matrix,
               model = model.xgb, 
               # sabsumple = 300,
@@ -264,7 +278,7 @@ system.time(
     predinteraction = TRUE, approxcontrib = FALSE)
 )
    user  system elapsed 
-  50.86    0.02    6.73 
+  43.12    0.01    5.60 
 ```
 
 ### `predinteraction = TRUE, approxcontrib = FALSE`	
@@ -281,7 +295,7 @@ system.time(
     predinteraction = TRUE, approxcontrib = TRUE)
 )
    user  system elapsed 
-   0.66    0.00    0.13 
+   0.73    0.01    0.14 
 ```
 
 ## Interaction of single observation
@@ -291,16 +305,17 @@ system.time(
 ```r
 idx = 1
 predinteraction.shap[idx, ,] %>% 
-  data.frame %>% 
+  data.frame %>%
   select(-BIAS) %>% 
   rownames_to_column("feature") %>% 
-  gather(key = interact, value = value, -feature) %>% 
+  gather(key = interact, value = value, -feature) %>%
+  filter(feature != "BIAS") %>% 
   mutate_at(vars(feature, interact), as.factor) %>% 
   ggplot(aes(x = feature, y = interact, fill = value)) +
   geom_tile() +
   scale_fill_gradient2(midpoint = 0, 
                        low="blue", mid = "white", high="red") +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-13-1.png)<!-- -->
@@ -319,12 +334,13 @@ mean.shap %>%
   data.frame %>%
   select(-BIAS) %>% 
   rownames_to_column("feature") %>% 
-  gather(key = interact, value = value, -feature) %>% 
+  gather(key = interact, value = value, -feature) %>%
+  filter(feature != "BIAS") %>% 
   mutate_at(vars(feature, interact), as.factor) %>% 
   ggplot(aes(x = feature, y = interact, fill = value)) +
   geom_tile() +
   scale_fill_gradient(low="white",high="red") +
-  theme(axis.text.x = element_text(angle = 90))
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ![](410_breakdown_feature_response-interaction_files/figure-html/unnamed-chunk-14-1.png)<!-- -->
