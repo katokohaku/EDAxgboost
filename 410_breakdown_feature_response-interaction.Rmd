@@ -36,8 +36,7 @@ set.seed(1)
 ```
 
 ```{r install.requirements, eval = FALSE}
-install.packages("devtools", dependencies = TRUE)
-devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
+install.packages("ggforce", dependencies = TRUE)
 
 ```
 
@@ -268,11 +267,18 @@ system.time(
 
 ## 2-way feature interaction of single observation
 
-```{r fig.height=4, fig.width=5.2}
+```{r}
 idx = 1
-predinteraction.shap[idx, ,] %>% 
+single.2way <- predinteraction.shap[idx, ,] %>% 
   data.frame %>%
-  select(-BIAS) %>% 
+  select(-BIAS) 
+
+single.2way %>% knitr::kable()
+
+```
+
+```{r, fig.height=4, fig.width=5.2}
+single.2way %>% 
   rownames_to_column("feature") %>% 
   gather(key = interact, value = value, -feature) %>%
   filter(feature != "BIAS") %>% 
@@ -282,27 +288,7 @@ predinteraction.shap[idx, ,] %>%
   scale_fill_gradient2(midpoint = 0, 
                        low="blue", mid = "white", high="red") +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
-```
 
-## Mean feature interaction of all observation
-
-```{r fig.height=4, fig.width=5.2}
-mean.shap <- apply(predinteraction.shap, 2:3, sum) /
-  NROW(predinteraction.shap)
-mean.app <- apply(predinteraction.app, 2:3, sum) /
-  NROW(predinteraction.app)
-
-mean.shap %>% 
-  data.frame %>%
-  select(-BIAS) %>% 
-  rownames_to_column("feature") %>% 
-  gather(key = interact, value = value, -feature) %>%
-  filter(feature != "BIAS") %>% 
-  mutate_at(vars(feature, interact), as.factor) %>% 
-  ggplot(aes(x = feature, y = interact, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(midpoint = 0, 
-                       low="blue", mid = "white", high="red") +  theme(axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 ## Mean absolute feature interaction of all observation

@@ -41,6 +41,7 @@ install.packages("fastDummies", dependencies = TRUE)
 install.packages("xgboost",     dependencies = TRUE)
 install.packages("tidyverse",   dependencies = TRUE)
 install.packages("AUC",         dependencies = TRUE)
+install.packages("Ckmeans.1d.dp",dependencies = TRUE)
 
 install.packages("caret", dependencies = FALSE)
 
