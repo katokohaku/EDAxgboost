@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: individual explanation using xgboostExplainer
+title: individual/group explanation using xgboost
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -36,21 +36,22 @@ set.seed(1)
 ```
 
 ```{r install.requirements, eval = FALSE}
-install.packages("devtools", dependencies = TRUE)
-devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
-
-install.packages("ggridges", dependencies = TRUE)
+install.packages("Rtsne", dependencies = TRUE)
+install.packages("uwot", dependencies = TRUE)
+install.packages("ggdendro", dependencies = TRUE)
+install.packages("ggrepel", dependencies = TRUE)
 
 ```
 
 ```{r require.packages, message=FALSE}
 require(tidyverse)
 require(magrittr)
-require(data.table)
 require(xgboost)
-require(xgboostExplainer)
-require(ggridges)
 
+require(Rtsne)
+require(uwot)
+library(ggdendro)
+require(ggrepel)
 
 ```
 
@@ -186,30 +187,31 @@ according to :
 http://jmonlong.github.io/Hippocamplus/2017/12/02/tsne-and-clustering/
 
 ```{r}
-require(Rtsne)
 # approxcontrib.xgb %>% str
+# prediction.xgb %>% str
 
 approxcontrib.xgb.tsne <- approxcontrib.xgb %>% 
-  data.frame() %>% 
+  # data.frame() %>% 
+  data.frame(pred = prediction.xgb) %>% 
   select(-BIAS) %>%
-  Rtsne(perplexity = 300, check_duplicates = FALSE)
+  Rtsne::Rtsne(perplexity = 50, check_duplicates = FALSE)
 
-approxcontrib.xgb.tsne %>% str
+# approxcontrib.xgb.tsne %>% str
 
 mapping.tsne <- data.frame(
   id     = 1:length(prediction.xgb),
-  tsne1  = approxcontrib.xgb.tsne$Y[, 1],
-  tsne2  = approxcontrib.xgb.tsne$Y[, 2],
+  dim1  = approxcontrib.xgb.tsne$Y[, 1],
+  dim2  = approxcontrib.xgb.tsne$Y[, 2],
   pred   = prediction.xgb,
   weight = weight.app)
-```
 
-```{r}
 ggp.tsne <- mapping.tsne %>% 
-  ggplot(aes(x = tsne1, y = tsne2, colour = prediction.xgb)) + 
+  ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
     geom_point(alpha = 0.3) + theme_bw() +
-  scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
-
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="gray", high="red") + 
+  guides(colour = FALSE) + 
+  labs(title = "t-SNE")
+ggp.tsne
 ggsave(ggp.tsne, filename =  "./output/image.files/400_map_tSNE.png",
     height = 5, width = 7)
 
@@ -220,7 +222,7 @@ ggsave(ggp.tsne, filename =  "./output/image.files/400_map_tSNE.png",
 
 ## Hierarchical clustering
 
-```{r clustering}
+```{r }
 approxcontrib.xgb.tsne.hc <- mapping.tsne %>% 
   select(-id) %>% 
   as.matrix() %>% 
@@ -235,7 +237,7 @@ approxcontrib.xgb.tsne.hc
 ```{r}
 library(ggdendro)
 
-cut.off = 5
+cut.off = 12
 
 ggd.breakdown <- ggdendrogram(approxcontrib.xgb.tsne.hc, rotate = TRUE, size = 2) +
   geom_hline(yintercept = cut.off, color = "red")
@@ -248,7 +250,6 @@ ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules.png",
 ![](./output/image.files/400_hclust_rules.png)
 
 ```{r}
-# install.packages("ggrepel", dependencies = TRUE)
 require(ggrepel)
 
 mapping.tsne$hclust <- approxcontrib.xgb.tsne.hc %>%
@@ -257,11 +258,11 @@ mapping.tsne$hclust <- approxcontrib.xgb.tsne.hc %>%
 
 hc.cent <- mapping.tsne %>% 
   group_by(hclust) %>%
-  select(tsne1, tsne2) %>% 
+  select(dim1, dim2) %>% 
   summarize_all(mean)
 
 map.tsne.labeled <- mapping.tsne %>% 
-  ggplot(aes(x = tsne1, y = tsne2, colour = hclust)) + 
+  ggplot(aes(x = dim1, y = dim2, colour = hclust)) + 
   geom_point(alpha = 0.3) + 
   theme_bw() +
   ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
@@ -274,6 +275,151 @@ ggsave(map.tsne.labeled, filename =  "./output/image.files/400_map_tSNE_labeled.
 
 ![](output/image.files/400_map_tSNE_labeled.png)
 
+
+## dimension reduction using UMAP
+
+according to :
+https://rdrr.io/cran/uwot/man/umap.html
+
+
+### non-optional
+
+```{r}
+approxcontrib.xgb.umap <- approxcontrib.xgb %>% 
+  data.frame() %>% 
+  select(-BIAS) %>%
+  uwot::umap()
+
+approxcontrib.xgb.umap %>% str
+
+mapping.umap <- data.frame(
+  id     = 1:length(prediction.xgb),
+  dim1  = approxcontrib.xgb.umap[, 1],
+  dim2  = approxcontrib.xgb.umap[, 2],
+  pred   = prediction.xgb,
+  weight = weight.app)
+# mapping.umap %>% str
+
+ggp.umap <- mapping.umap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
+    geom_point(alpha = 0.3) + theme_bw() +
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="gray", high="red") + 
+  guides(colour = FALSE) + 
+  labs(title = "UMAP (without label)") 
+
+ggsave(ggp.umap, filename =  "./output/image.files/400_map_umap.png",
+       height = 5, width = 7)
+
+```
+
+![](output/image.files/400_map_umap.png)
+
+### supervised dimension reduction
+
+```{r}
+approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
+  data.frame() %>% 
+  select(-BIAS) %>%
+  uwot::umap(y = prediction.xgb)
+
+# approxcontrib.xgb.sumap %>% str
+
+mapping.sumap <- data.frame(
+  id     = 1:length(prediction.xgb),
+  dim1  = approxcontrib.xgb.sumap[, 1],
+  dim2  = approxcontrib.xgb.sumap[, 2],
+  pred   = prediction.xgb,
+  weight = weight.app)
+# mapping.sumap %>% str
+
+ggp.sumap <- mapping.sumap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
+    geom_point(alpha = 0.3) + theme_bw() +
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="gray", high="red") + 
+  guides(colour = FALSE) + 
+  labs(title = "supervised UMAP") 
+
+ggsave(ggp.sumap, filename =  "./output/image.files/400_map_sumap.png",
+       height = 5, width = 7)
+
+```
+
+![](output/image.files/400_map_sumap.png)
+
+
+## Hierarchical clustering
+
+```{r }
+approxcontrib.xgb.sumap.hc <- mapping.sumap %>% 
+  select(-id) %>% 
+  as.matrix() %>% 
+  dist() %>% 
+  hclust()
+approxcontrib.xgb.sumap.hc
+
+```
+
+### explore cut.off for cutree
+
+```{r}
+cut.off = 15
+
+ggd.breakdown <- ggdendro::ggdendrogram(
+  data = approxcontrib.xgb.sumap.hc, 
+  rotate = TRUE, 
+  size = 2) +
+  geom_hline(yintercept = cut.off, color = "red")
+
+ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules_sumap.png",
+    height = 12, width = 7)
+
+```
+
+![](./output/image.files/400_hclust_rules_sumap.png)
+
+```{r}
+# install.packages("ggrepel", dependencies = TRUE)
+require(ggrepel)
+
+mapping.sumap$hclust <- approxcontrib.xgb.sumap.hc %>%
+  cutree(h = cut.off) %>%
+  factor()
+
+hc.cent <- mapping.sumap %>% 
+  group_by(hclust) %>%
+  select(dim1, dim2) %>% 
+  summarize_all(mean)
+
+ggp.sumap.labeled <- mapping.sumap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = hclust)) + 
+  geom_point(alpha = 0.3) + 
+  theme_bw() +
+  ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
+  guides(colour = FALSE) + 
+  labs(title = "supervised UMAP + hclust") 
+
+
+ggsave(ggp.sumap.labeled, filename =  "./output/image.files/400_map_sumap_labeled.png",
+    height = 7, width = 7)
+
+```
+
+![](output/image.files/400_map_sumap_labeled.png)
+
+```{r, fig.height=7, fig.width=7, results="hide"}
+ggp.tsne.sumap <- gridExtra::grid.arrange(
+  ggp.tsne, 
+  ggp.umap,
+  ggp.sumap, 
+  ggp.sumap.labeled,
+  ncol = 2)
+
+ggsave(ggp.tsne.sumap, filename =  "./output/image.files/400_tSNE_sumap.png",
+    height = 7, width = 7)
+
+```
+
+![](output/image.files/400_tSNE_sumap.png)
 
 ## View rules in several group
 
@@ -304,7 +450,6 @@ ggsave(ggp.sw, filename = fn, height = 6)
 ```
 
 ![](./output/image.files/400_rules_cl1.png)
-
 
 
 

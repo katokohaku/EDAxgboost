@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
-title: individual explanation using xgboostExplainer
-date: "2019/05/10"
+title: individual/group explanation using xgboost
+date: "2019/07/29"
 output:
   html_document:
     fig_caption: yes
@@ -24,10 +24,10 @@ editor_options:
 
 
 ```r
-install.packages("devtools", dependencies = TRUE)
-devtools::install_github("AppliedDataSciencePartners/xgboostExplainer")
-
-install.packages("ggridges", dependencies = TRUE)
+install.packages("Rtsne", dependencies = TRUE)
+install.packages("uwot", dependencies = TRUE)
+install.packages("ggdendro", dependencies = TRUE)
+install.packages("ggrepel", dependencies = TRUE)
 
 ```
 
@@ -35,11 +35,12 @@ install.packages("ggridges", dependencies = TRUE)
 ```r
 require(tidyverse)
 require(magrittr)
-require(data.table)
 require(xgboost)
-require(xgboostExplainer)
-require(ggridges)
 
+require(Rtsne)
+require(uwot)
+library(ggdendro)
+require(ggrepel)
 ```
 
 # Preparation 
@@ -211,47 +212,36 @@ http://jmonlong.github.io/Hippocamplus/2017/12/02/tsne-and-clustering/
 
 
 ```r
-require(Rtsne)
-Loading required package: Rtsne
 # approxcontrib.xgb %>% str
+# prediction.xgb %>% str
 
 approxcontrib.xgb.tsne <- approxcontrib.xgb %>% 
-  data.frame() %>% 
+  # data.frame() %>% 
+  data.frame(pred = prediction.xgb) %>% 
   select(-BIAS) %>%
-  Rtsne(perplexity = 300, check_duplicates = FALSE)
+  Rtsne::Rtsne(perplexity = 50, check_duplicates = FALSE)
 
-approxcontrib.xgb.tsne %>% str
-List of 14
- $ N                  : int 4000
- $ Y                  : num [1:4000, 1:2] -14.39 -8.81 -3.31 4.29 -9.23 ...
- $ costs              : num [1:4000] 5.28e-05 3.01e-05 1.74e-04 7.55e-05 4.65e-05 ...
- $ itercosts          : num [1:20] 59.4 56 55.9 55.6 55.6 ...
- $ origD              : int 9
- $ perplexity         : num 300
- $ theta              : num 0.5
- $ max_iter           : num 1000
- $ stop_lying_iter    : int 250
- $ mom_switch_iter    : int 250
- $ momentum           : num 0.5
- $ final_momentum     : num 0.8
- $ eta                : num 200
- $ exaggeration_factor: num 12
+# approxcontrib.xgb.tsne %>% str
 
 mapping.tsne <- data.frame(
   id     = 1:length(prediction.xgb),
-  tsne1  = approxcontrib.xgb.tsne$Y[, 1],
-  tsne2  = approxcontrib.xgb.tsne$Y[, 2],
+  dim1  = approxcontrib.xgb.tsne$Y[, 1],
+  dim2  = approxcontrib.xgb.tsne$Y[, 2],
   pred   = prediction.xgb,
   weight = weight.app)
+
+ggp.tsne <- mapping.tsne %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
+    geom_point(alpha = 0.3) + theme_bw() +
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="gray", high="red") + 
+  guides(colour = FALSE) + 
+  labs(title = "t-SNE")
+ggp.tsne
 ```
 
+![](400_breakdown_individual-explanation_and_clustering_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
 
 ```r
-ggp.tsne <- mapping.tsne %>% 
-  ggplot(aes(x = tsne1, y = tsne2, colour = prediction.xgb)) + 
-    geom_point(alpha = 0.3) + theme_bw() +
-  scale_color_gradient2(midpoint=0.5, low="blue", mid="white", high="red")
-
 ggsave(ggp.tsne, filename =  "./output/image.files/400_map_tSNE.png",
     height = 5, width = 7)
 ```
@@ -284,7 +274,7 @@ Number of objects: 4000
 ```r
 library(ggdendro)
 
-cut.off = 5
+cut.off = 12
 
 ggd.breakdown <- ggdendrogram(approxcontrib.xgb.tsne.hc, rotate = TRUE, size = 2) +
   geom_hline(yintercept = cut.off, color = "red")
@@ -297,9 +287,7 @@ ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules.png",
 
 
 ```r
-# install.packages("ggrepel", dependencies = TRUE)
 require(ggrepel)
-Loading required package: ggrepel
 
 mapping.tsne$hclust <- approxcontrib.xgb.tsne.hc %>%
   cutree(h = cut.off) %>%
@@ -307,12 +295,12 @@ mapping.tsne$hclust <- approxcontrib.xgb.tsne.hc %>%
 
 hc.cent <- mapping.tsne %>% 
   group_by(hclust) %>%
-  select(tsne1, tsne2) %>% 
+  select(dim1, dim2) %>% 
   summarize_all(mean)
 Adding missing grouping variables: `hclust`
 
 map.tsne.labeled <- mapping.tsne %>% 
-  ggplot(aes(x = tsne1, y = tsne2, colour = hclust)) + 
+  ggplot(aes(x = dim1, y = dim2, colour = hclust)) + 
   geom_point(alpha = 0.3) + 
   theme_bw() +
   ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
@@ -324,6 +312,166 @@ ggsave(map.tsne.labeled, filename =  "./output/image.files/400_map_tSNE_labeled.
 
 ![](output/image.files/400_map_tSNE_labeled.png)
 
+
+## dimension reduction using UMAP
+
+according to :
+https://rdrr.io/cran/uwot/man/umap.html
+
+
+### non-optional
+
+
+```r
+approxcontrib.xgb.umap <- approxcontrib.xgb %>% 
+  data.frame() %>% 
+  select(-BIAS) %>%
+  uwot::umap()
+
+approxcontrib.xgb.umap %>% str
+ num [1:4000, 1:2] 7.45 8.51 -2.14 -10.12 11.33 ...
+ - attr(*, "scaled:center")= num [1:2] 0.553 -0.136
+
+mapping.umap <- data.frame(
+  id     = 1:length(prediction.xgb),
+  dim1  = approxcontrib.xgb.umap[, 1],
+  dim2  = approxcontrib.xgb.umap[, 2],
+  pred   = prediction.xgb,
+  weight = weight.app)
+# mapping.umap %>% str
+
+ggp.umap <- mapping.umap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
+    geom_point(alpha = 0.3) + theme_bw() +
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="gray", high="red") + 
+  guides(colour = FALSE) + 
+  labs(title = "UMAP (without label)") 
+
+ggsave(ggp.umap, filename =  "./output/image.files/400_map_umap.png",
+       height = 5, width = 7)
+```
+
+![](output/image.files/400_map_umap.png)
+
+### supervised dimension reduction
+
+
+```r
+approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
+  data.frame() %>% 
+  select(-BIAS) %>%
+  uwot::umap(y = prediction.xgb)
+
+# approxcontrib.xgb.sumap %>% str
+
+mapping.sumap <- data.frame(
+  id     = 1:length(prediction.xgb),
+  dim1  = approxcontrib.xgb.sumap[, 1],
+  dim2  = approxcontrib.xgb.sumap[, 2],
+  pred   = prediction.xgb,
+  weight = weight.app)
+# mapping.sumap %>% str
+
+ggp.sumap <- mapping.sumap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
+    geom_point(alpha = 0.3) + theme_bw() +
+  scale_color_gradient2(midpoint=0.5, low="blue", mid="gray", high="red") + 
+  guides(colour = FALSE) + 
+  labs(title = "supervised UMAP") 
+
+ggsave(ggp.sumap, filename =  "./output/image.files/400_map_sumap.png",
+       height = 5, width = 7)
+```
+
+![](output/image.files/400_map_sumap.png)
+
+
+## Hierarchical clustering
+
+
+```r
+approxcontrib.xgb.sumap.hc <- mapping.sumap %>% 
+  select(-id) %>% 
+  as.matrix() %>% 
+  dist() %>% 
+  hclust()
+approxcontrib.xgb.sumap.hc
+
+Call:
+hclust(d = .)
+
+Cluster method   : complete 
+Distance         : euclidean 
+Number of objects: 4000 
+```
+
+### explore cut.off for cutree
+
+
+```r
+cut.off = 15
+
+ggd.breakdown <- ggdendro::ggdendrogram(
+  data = approxcontrib.xgb.sumap.hc, 
+  rotate = TRUE, 
+  size = 2) +
+  geom_hline(yintercept = cut.off, color = "red")
+
+ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules_sumap.png",
+    height = 12, width = 7)
+```
+
+![](./output/image.files/400_hclust_rules_sumap.png)
+
+
+```r
+# install.packages("ggrepel", dependencies = TRUE)
+require(ggrepel)
+
+mapping.sumap$hclust <- approxcontrib.xgb.sumap.hc %>%
+  cutree(h = cut.off) %>%
+  factor()
+
+hc.cent <- mapping.sumap %>% 
+  group_by(hclust) %>%
+  select(dim1, dim2) %>% 
+  summarize_all(mean)
+Adding missing grouping variables: `hclust`
+
+ggp.sumap.labeled <- mapping.sumap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = hclust)) + 
+  geom_point(alpha = 0.3) + 
+  theme_bw() +
+  ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
+  guides(colour = FALSE) + 
+  labs(title = "supervised UMAP + hclust") 
+
+
+ggsave(ggp.sumap.labeled, filename =  "./output/image.files/400_map_sumap_labeled.png",
+    height = 7, width = 7)
+```
+
+![](output/image.files/400_map_sumap_labeled.png)
+
+
+```r
+ggp.tsne.sumap <- gridExtra::grid.arrange(
+  ggp.tsne, 
+  ggp.umap,
+  ggp.sumap, 
+  ggp.sumap.labeled,
+  ncol = 2)
+```
+
+![](400_breakdown_individual-explanation_and_clustering_files/figure-html/unnamed-chunk-18-1.png)<!-- -->
+
+```r
+
+ggsave(ggp.tsne.sumap, filename =  "./output/image.files/400_tSNE_sumap.png",
+    height = 7, width = 7)
+```
+
+![](output/image.files/400_tSNE_sumap.png)
 
 ## View rules in several group
 
@@ -355,7 +503,6 @@ ggsave(ggp.sw, filename = fn, height = 6)
 ```
 
 ![](./output/image.files/400_rules_cl1.png)
-
 
 
 
