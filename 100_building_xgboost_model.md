@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "building xgboost model"
-date: "2019/05/08"
+date: "2019/05/13"
 output:
   html_document:
     fig_caption: yes
@@ -30,6 +30,7 @@ install.packages("fastDummies", dependencies = TRUE)
 install.packages("xgboost",     dependencies = TRUE)
 install.packages("tidyverse",   dependencies = TRUE)
 install.packages("AUC",         dependencies = TRUE)
+install.packages("Ckmeans.1d.dp",dependencies = TRUE)
 
 install.packages("caret", dependencies = FALSE)
 ```
@@ -55,16 +56,16 @@ HR_data %>% str
 
 ```
 #> 'data.frame':	14999 obs. of  10 variables:
-#>  $ left                 : int  0 0 0 0 0 0 0 0 0 1 ...
-#>  $ satisfaction_level   : num  0.645 0.352 0.635 0.685 0.349 ...
-#>  $ last_evaluation      : num  0.628 0.711 0.268 0.284 0.772 ...
-#>  $ number_project       : int  4 10 9 11 8 5 12 6 11 12 ...
-#>  $ average_montly_hours : int  291 306 203 329 243 265 320 204 195 275 ...
-#>  $ time_spend_company   : int  5 5 3 6 9 10 4 4 6 5 ...
-#>  $ Work_accident        : int  0 0 1 0 1 1 0 0 0 0 ...
-#>  $ promotion_last_5years: int  0 0 0 0 0 0 0 0 0 0 ...
-#>  $ sales                : Factor w/ 10 levels "accounting","hr",..: 8 5 10 8 9 4 8 10 10 8 ...
-#>  $ salary               : Factor w/ 3 levels "high","low","medium": 2 3 2 3 3 3 3 2 2 3 ...
+#>  $ left                 : int  1 0 1 0 0 1 0 0 0 1 ...
+#>  $ satisfaction_level   : num  0.705 0.454 0.306 0.591 0.812 ...
+#>  $ last_evaluation      : num  0.803 0.484 0.624 0.712 0.865 ...
+#>  $ number_project       : int  9 9 9 11 8 8 8 13 7 5 ...
+#>  $ average_montly_hours : int  275 275 293 323 301 154 235 192 259 160 ...
+#>  $ time_spend_company   : int  6 4 6 4 5 4 7 4 9 4 ...
+#>  $ Work_accident        : int  0 0 0 0 0 0 0 0 1 0 ...
+#>  $ promotion_last_5years: int  0 0 0 0 0 0 0 0 1 0 ...
+#>  $ sales                : Factor w/ 10 levels "accounting","hr",..: 8 3 3 10 10 6 2 10 2 8 ...
+#>  $ salary               : Factor w/ 3 levels "high","low","medium": 2 2 2 2 1 2 2 2 3 3 ...
 ```
 
 
@@ -112,14 +113,14 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>0.586 (0.185)</td>
-<td>0.426 (0.215)</td>
-<td>0.548 (0.205)</td>
+<td>0.586 (0.186)</td>
+<td>0.422 (0.216)</td>
+<td>0.547 (0.205)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>0.602 [0.0314, 1.00]</td>
-<td class='lastrow'>0.409 [0.00, 0.938]</td>
+<td class='lastrow'>0.599 [0.0242, 1.00]</td>
+<td class='lastrow'>0.404 [0.00, 0.933]</td>
 <td class='lastrow'>0.564 [0.00, 1.00]</td>
 </tr>
 <tr>
@@ -130,15 +131,15 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>0.538 (0.192)</td>
-<td>0.541 (0.226)</td>
-<td>0.539 (0.201)</td>
+<td>0.527 (0.198)</td>
+<td>0.529 (0.227)</td>
+<td>0.527 (0.205)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>0.538 [0.00, 1.00]</td>
-<td class='lastrow'>0.535 [0.102, 0.998]</td>
-<td class='lastrow'>0.538 [0.00, 1.00]</td>
+<td class='lastrow'>0.525 [0.00, 0.999]</td>
+<td class='lastrow'>0.533 [0.0771, 1.00]</td>
+<td class='lastrow'>0.527 [0.00, 1.00]</td>
 </tr>
 <tr>
 <td class='rowlabel firstrow'><span class='varlabel'>number_project</span></td>
@@ -148,9 +149,9 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>7.78 (2.24)</td>
-<td>7.84 (2.71)</td>
-<td>7.79 (2.36)</td>
+<td>7.78 (2.23)</td>
+<td>7.88 (2.73)</td>
+<td>7.80 (2.36)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
@@ -166,15 +167,15 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>248 (54.6)</td>
-<td>256 (67.8)</td>
-<td>250 (58.1)</td>
+<td>246 (54.0)</td>
+<td>254 (67.9)</td>
+<td>248 (57.7)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>249 [96.0, 384]</td>
-<td class='lastrow'>255 [125, 405]</td>
-<td class='lastrow'>250 [96.0, 405]</td>
+<td class='lastrow'>246 [96.0, 382]</td>
+<td class='lastrow'>253 [124, 406]</td>
+<td class='lastrow'>247 [96.0, 406]</td>
 </tr>
 <tr>
 <td class='rowlabel firstrow'><span class='varlabel'>time_spend_company</span></td>
@@ -184,9 +185,9 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>5.37 (2.11)</td>
-<td>5.86 (1.72)</td>
-<td>5.49 (2.04)</td>
+<td>5.39 (2.11)</td>
+<td>5.90 (1.74)</td>
+<td>5.51 (2.04)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
@@ -440,25 +441,25 @@ print(cv, verbose=TRUE)
 #>   cb.evaluation.log()
 #>   cb.early.stop(stopping_rounds = early_stopping_rounds, maximize = maximize, 
 #>     verbose = verbose)
-#> niter: 183
-#> best_iteration: 173
-#> best_ntreelimit: 173
+#> niter: 217
+#> best_iteration: 207
+#> best_ntreelimit: 207
 #> evaluation_log:
 #>     iter train_auc_mean train_auc_std test_auc_mean test_auc_std
-#>        1      0.8328622   0.047237262     0.8058208  0.051312698
-#>        2      0.8796198   0.019859620     0.8547936  0.021522664
-#>        3      0.8998354   0.004525966     0.8773280  0.008682148
-#>        4      0.9049258   0.001939266     0.8816320  0.012243845
-#>        5      0.9085844   0.003670681     0.8851372  0.011703953
+#>        1      0.8273684   0.042921963     0.7975580   0.04395393
+#>        2      0.8763388   0.017665793     0.8410626   0.02558067
+#>        3      0.8948534   0.004209854     0.8665278   0.01504895
+#>        4      0.9013862   0.003772338     0.8751420   0.01487342
+#>        5      0.9040622   0.004404049     0.8779526   0.01697174
 #> ---                                                             
-#>      179      0.9592910   0.001353793     0.9193092  0.008523966
-#>      180      0.9593906   0.001391663     0.9193040  0.008552176
-#>      181      0.9594876   0.001396824     0.9193202  0.008643468
-#>      182      0.9596118   0.001455732     0.9192342  0.008724051
-#>      183      0.9597536   0.001496032     0.9191226  0.008777727
+#>      213      0.9614746   0.002697108     0.9133188   0.01289039
+#>      214      0.9615336   0.002689193     0.9133128   0.01283188
+#>      215      0.9616688   0.002661051     0.9132800   0.01281371
+#>      216      0.9617984   0.002653891     0.9132976   0.01284036
+#>      217      0.9618460   0.002661486     0.9133914   0.01290111
 #> Best iteration:
 #>  iter train_auc_mean train_auc_std test_auc_mean test_auc_std
-#>   173       0.958597   0.001356155      0.919394  0.008533882
+#>   207      0.9606112   0.002692373     0.9134904   0.01283842
 ```
 
 ```r
@@ -498,26 +499,26 @@ table(prediction = ifelse(test.pred > 0.5, 1, 0),
 #> 
 #>           truth
 #> prediction    0    1
-#>          0 7746  232
-#>          1 1682 1339
+#>          0 7879  220
+#>          1 1549 1351
 #>                                          
-#>                Accuracy : 0.826          
-#>                  95% CI : (0.8188, 0.833)
+#>                Accuracy : 0.8392         
+#>                  95% CI : (0.8322, 0.846)
 #>     No Information Rate : 0.8572         
 #>     P-Value [Acc > NIR] : 1              
 #>                                          
-#>                   Kappa : 0.4867         
+#>                   Kappa : 0.5144         
 #>                                          
 #>  Mcnemar's Test P-Value : <2e-16         
 #>                                          
-#>             Sensitivity : 0.8216         
-#>             Specificity : 0.8523         
-#>          Pos Pred Value : 0.9709         
-#>          Neg Pred Value : 0.4432         
+#>             Sensitivity : 0.8357         
+#>             Specificity : 0.8600         
+#>          Pos Pred Value : 0.9728         
+#>          Neg Pred Value : 0.4659         
 #>              Prevalence : 0.8572         
-#>          Detection Rate : 0.7042         
-#>    Detection Prevalence : 0.7253         
-#>       Balanced Accuracy : 0.8370         
+#>          Detection Rate : 0.7163         
+#>    Detection Prevalence : 0.7363         
+#>       Balanced Accuracy : 0.8478         
 #>                                          
 #>        'Positive' Class : 0              
 #> 
@@ -587,15 +588,15 @@ var.imp %>% mutate_if(is.numeric, round, digits = 4)
 
 ```
 #>                 Feature   Gain  Cover Frequency
-#> 1    satisfaction_level 0.3111 0.2191    0.2150
-#> 2       last_evaluation 0.2117 0.1746    0.2066
-#> 3  average_montly_hours 0.1890 0.1740    0.2112
-#> 4    time_spend_company 0.1399 0.1621    0.1186
-#> 5        number_project 0.0525 0.0754    0.1133
-#> 6                salary 0.0487 0.0884    0.0446
-#> 7         Work_accident 0.0293 0.0474    0.0212
-#> 8                 sales 0.0160 0.0464    0.0638
-#> 9 promotion_last_5years 0.0018 0.0126    0.0057
+#> 1    satisfaction_level 0.3048 0.2536    0.2388
+#> 2       last_evaluation 0.2185 0.1904    0.2289
+#> 3  average_montly_hours 0.2058 0.1583    0.2050
+#> 4    time_spend_company 0.1305 0.1670    0.1175
+#> 5        number_project 0.0509 0.0696    0.0941
+#> 6         Work_accident 0.0382 0.0531    0.0236
+#> 7                salary 0.0353 0.0687    0.0374
+#> 8                 sales 0.0138 0.0219    0.0481
+#> 9 promotion_last_5years 0.0023 0.0175    0.0066
 ```
 
 ```r

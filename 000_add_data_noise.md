@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "add noise on data"
-date: "2019/05/07"
+date: "2019/05/13"
 output:
   html_document:
     fig_caption: yes
@@ -380,53 +380,7 @@ table1(~ factor(sales) + factor(salary)
 </table>
 </div><!--/html_preserve-->
 
-# Shuffle rows
 
-
-```r
-full = full[sample(.N)]
-full
-```
-
-```
-       left satisfaction_level last_evaluation number_project
-    1:    0               0.60            0.95              3
-    2:    0               0.48            0.94              4
-    3:    0               0.50            0.48              2
-    4:    0               0.69            0.59              4
-    5:    0               0.41            0.96              6
-   ---                                                       
-14995:    0               0.72            0.86              4
-14996:    0               0.62            0.62              4
-14997:    1               0.41            0.48              2
-14998:    0               0.91            0.66              3
-14999:    0               0.63            0.57              3
-       average_montly_hours time_spend_company Work_accident
-    1:                  221                  3             0
-    2:                  231                  4             0
-    3:                  150                  3             1
-    4:                  264                  3             0
-    5:                  171                  5             1
-   ---                                                      
-14995:                  191                  2             0
-14996:                  136                  2             0
-14997:                  141                  3             0
-14998:                  208                  4             0
-14999:                  242                  3             0
-       promotion_last_5years       sales salary
-    1:                     0       sales    low
-    2:                     0   marketing medium
-    3:                     0   technical    low
-    4:                     0       sales medium
-    5:                     0     support medium
-   ---                                         
-14995:                     0       RandD    low
-14996:                     0       sales medium
-14997:                     0          IT    low
-14998:                     0       sales medium
-14999:                     0 product_mng    low
-```
- 
  # add Random Noise (to continuous feature)
  
 
@@ -509,14 +463,14 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>0.586 (0.185)</td>
-<td>0.426 (0.215)</td>
-<td>0.548 (0.205)</td>
+<td>0.586 (0.186)</td>
+<td>0.422 (0.216)</td>
+<td>0.547 (0.205)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>0.602 [0.0314, 1.00]</td>
-<td class='lastrow'>0.409 [0.00, 0.938]</td>
+<td class='lastrow'>0.599 [0.0242, 1.00]</td>
+<td class='lastrow'>0.404 [0.00, 0.933]</td>
 <td class='lastrow'>0.564 [0.00, 1.00]</td>
 </tr>
 <tr>
@@ -527,15 +481,15 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>0.538 (0.192)</td>
-<td>0.541 (0.226)</td>
-<td>0.539 (0.201)</td>
+<td>0.527 (0.198)</td>
+<td>0.529 (0.227)</td>
+<td>0.527 (0.205)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>0.538 [0.00, 1.00]</td>
-<td class='lastrow'>0.535 [0.102, 0.998]</td>
-<td class='lastrow'>0.538 [0.00, 1.00]</td>
+<td class='lastrow'>0.525 [0.00, 0.999]</td>
+<td class='lastrow'>0.533 [0.0771, 1.00]</td>
+<td class='lastrow'>0.527 [0.00, 1.00]</td>
 </tr>
 <tr>
 <td class='rowlabel firstrow'><span class='varlabel'>number_project</span></td>
@@ -545,9 +499,9 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>7.78 (2.24)</td>
-<td>7.84 (2.71)</td>
-<td>7.79 (2.36)</td>
+<td>7.78 (2.23)</td>
+<td>7.88 (2.73)</td>
+<td>7.80 (2.36)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
@@ -563,15 +517,15 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>248 (54.6)</td>
-<td>256 (67.8)</td>
-<td>250 (58.1)</td>
+<td>246 (54.0)</td>
+<td>254 (67.9)</td>
+<td>248 (57.7)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
-<td class='lastrow'>249 [96.0, 384]</td>
-<td class='lastrow'>255 [125, 405]</td>
-<td class='lastrow'>250 [96.0, 405]</td>
+<td class='lastrow'>246 [96.0, 382]</td>
+<td class='lastrow'>253 [124, 406]</td>
+<td class='lastrow'>247 [96.0, 406]</td>
 </tr>
 <tr>
 <td class='rowlabel firstrow'><span class='varlabel'>time_spend_company</span></td>
@@ -581,9 +535,9 @@ table1(~ left +
 </tr>
 <tr>
 <td class='rowlabel'>Mean (SD)</td>
-<td>5.37 (2.11)</td>
-<td>5.86 (1.72)</td>
-<td>5.49 (2.04)</td>
+<td>5.39 (2.11)</td>
+<td>5.90 (1.74)</td>
+<td>5.51 (2.04)</td>
 </tr>
 <tr>
 <td class='rowlabel lastrow'>Median [Min, Max]</td>
@@ -640,6 +594,56 @@ ggpair.after <- GGally::ggpairs(full, aes(color = left, point_alpha = 0.3, alpha
 
 ggsave(ggpair.after, filename = "./output/image.files/000_ggpair_after.png", width = 6, height = 5)
 ```
+
+![](./output/image.files/000_ggpair_after.png)
+
+# Shuffle rows
+
+
+```r
+full = full[sample(.N)]
+full
+```
+
+```
+       left satisfaction_level last_evaluation number_project
+    1:    1             0.7053          0.8034              9
+    2:    0             0.4535          0.4843              9
+    3:    1             0.3056          0.6243              9
+    4:    0             0.5913          0.7118             11
+    5:    0             0.8116          0.8650              8
+   ---                                                       
+14995:    1             0.2751          0.3789              2
+14996:    0             0.6043          0.4197             11
+14997:    0             0.6752          0.7504             11
+14998:    0             0.4654          0.9551              7
+14999:    0             0.4178          0.4630              7
+       average_montly_hours time_spend_company Work_accident
+    1:                  275                  6             0
+    2:                  275                  4             0
+    3:                  293                  6             0
+    4:                  323                  4             0
+    5:                  301                  5             0
+   ---                                                      
+14995:                  188                  5             0
+14996:                  190                  3             0
+14997:                  231                  4             0
+14998:                  178                  6             1
+14999:                  176                  4             0
+       promotion_last_5years       sales salary
+    1:                     0       sales    low
+    2:                     0          IT    low
+    3:                     0          IT    low
+    4:                     0   technical    low
+    5:                     0   technical   high
+   ---                                         
+14995:                     0       RandD    low
+14996:                     0  accounting    low
+14997:                     0     support    low
+14998:                     0       RandD medium
+14999:                     0 product_mng    low
+```
+
 
 # Save data and model
 
