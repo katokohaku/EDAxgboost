@@ -4,5 +4,4 @@
 .Ruserdata
 *.docx
 *_cache
-middle/*
 output/040_plot_all_rules

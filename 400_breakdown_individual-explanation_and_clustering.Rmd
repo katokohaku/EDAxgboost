@@ -57,6 +57,8 @@ require(ggrepel)
 
 # Preparation 
 
+If file = "./middle/data_and_model.Rds" doesn't exist, RUN `100_building_xgboost_model.Rmd`.
+
 ```{r load.model.and.data}
 loaded.obs  <- readRDS("./middle/data_and_model.Rds")
 
@@ -320,7 +322,9 @@ ggsave(ggp.umap, filename =  "./output/image.files/400_map_umap.png",
 approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
   data.frame() %>% 
   select(-BIAS) %>%
-  uwot::umap(y = prediction.xgb)
+  uwot::umap(n_neighbors = 12,
+             learning_rate = 0.7,
+             y = prediction.xgb)
 
 # approxcontrib.xgb.sumap %>% str
 
@@ -339,64 +343,70 @@ ggp.sumap <- mapping.sumap %>%
   guides(colour = FALSE) + 
   labs(title = "supervised UMAP") 
 
-ggsave(ggp.sumap, filename =  "./output/image.files/400_map_sumap.png",
+ggsave(ggp.sumap, filename = "./output/image.files/400_map_sumap.png",
        height = 5, width = 7)
 
 ```
 
 ![](output/image.files/400_map_sumap.png)
 
+## Hierarchical Density-based spatial clustering of applications with noise (HDBSCAN)
 
-## Hierarchical clustering
+Reference:
 
-```{r }
-approxcontrib.xgb.sumap.hc <- mapping.sumap %>% 
-  select(-id) %>% 
-  as.matrix() %>% 
-  dist() %>% 
-  hclust()
-approxcontrib.xgb.sumap.hc
+https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html
 
-```
+according to:
 
-### explore cut.off for cutree
+https://cran.r-project.org/web/packages/dbscan/vignettes/hdbscan.html
 
 ```{r}
-cut.off = 15
-
-ggd.breakdown <- ggdendro::ggdendrogram(
-  data = approxcontrib.xgb.sumap.hc, 
-  rotate = TRUE, 
-  size = 2) +
-  geom_hline(yintercept = cut.off, color = "red")
-
-ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules_sumap.png",
-    height = 12, width = 7)
+# install.packages("dbscan", dependencies = TRUE)
+require(dbscan)
 
 ```
 
-![](./output/image.files/400_hclust_rules_sumap.png)
+`minPts` not only acts as a minimum cluster size to detect, but also as a "smoothing" factor of the density estimates implicitly computed from HDBSCAN.
+
+```{r }
+# mapping.sumap %>% str
+cl.hdbscan <- mapping.sumap %>% 
+  select(dim1, dim2) %>% 
+  hdbscan(minPts = 30)
+cl.hdbscan
+
+# par(mfcol=c(1,2))
+plot(cl.hdbscan, show_flat = TRUE)
+# cl %>% str(1)
+
+# plot(dim1 ~ dim2, data = mapping.sumap)
+# plot(dim2 ~ dim1, data = mapping.sumap, col=cl.hdbscan$cluster+1, pch=20)
+# par(mfcol=c(1,1))
+# plot(approxcontrib.xgb.sumap.hdbscan, show_flat = TRUE)
+
+```
 
 ```{r}
 # install.packages("ggrepel", dependencies = TRUE)
 require(ggrepel)
 
-mapping.sumap$hclust <- approxcontrib.xgb.sumap.hc %>%
-  cutree(h = cut.off) %>%
-  factor()
+mapping.sumap$hdbscan <- factor(cl.hdbscan$cluster)
 
-hc.cent <- mapping.sumap %>% 
-  group_by(hclust) %>%
+hdbscan.cent <- mapping.sumap %>% 
+  filter(hdbscan != 0) %>% 
+  dplyr::group_by(hdbscan) %>%
   select(dim1, dim2) %>% 
   summarize_all(mean)
 
 ggp.sumap.labeled <- mapping.sumap %>% 
-  ggplot(aes(x = dim1, y = dim2, colour = hclust)) + 
+  ggplot(aes(x = dim1, y = dim2, colour = hdbscan)) + 
   geom_point(alpha = 0.3) + 
   theme_bw() +
-  ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
+  ggrepel::geom_label_repel(data = hdbscan.cent, 
+                            aes(label = hdbscan),
+                            label.size = 0.1) + 
   guides(colour = FALSE) + 
-  labs(title = "supervised UMAP + hclust") 
+  labs(title = "supervised UMAP + HDBSCAN") 
 
 
 ggsave(ggp.sumap.labeled, filename =  "./output/image.files/400_map_sumap_labeled.png",
@@ -415,13 +425,61 @@ ggp.tsne.sumap <- gridExtra::grid.arrange(
   ncol = 2)
 
 ggsave(ggp.tsne.sumap, filename =  "./output/image.files/400_tSNE_sumap.png",
-    height = 7, width = 7)
+    height = 10, width = 10)
 
 ```
 
 ![](output/image.files/400_tSNE_sumap.png)
 
-## View rules in several group
+#### a failure case
+
+```{r}
+approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
+  data.frame() %>% 
+  select(-BIAS) %>%
+  uwot::umap(n_neighbors = 20,
+             learning_rate = 0.8,
+             y = prediction.xgb)
+
+# approxcontrib.xgb.sumap %>% str
+
+mapping.sumap <- data.frame(
+  id     = 1:length(prediction.xgb),
+  dim1  = approxcontrib.xgb.sumap[, 1],
+  dim2  = approxcontrib.xgb.sumap[, 2],
+  pred   = prediction.xgb,
+  weight = weight.app)
+# mapping.sumap %>% str
+
+cl.hdbscan <- mapping.sumap %>% 
+  select(dim1, dim2) %>% 
+  hdbscan(minPts = 10)
+
+mapping.sumap$hdbscan <- factor(cl.hdbscan$cluster)
+
+ggp.sumap.labeled <- mapping.sumap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = hdbscan)) + 
+  geom_point(alpha = 0.3) + 
+  theme_bw() +
+  guides(colour = FALSE) + 
+  labs(title = "supervised UMAP + HDBSCAN") 
+
+ggsave(ggp.sumap.labeled, filename =  "./output/image.files/400_map_sumap_labeled_fail.png",
+    height = 7, width = 7)
+
+```
+
+![](output/image.files/400_map_sumap_labeled_fail.png)
+```{r}
+cl.hdbscan <- mapping.sumap %>% 
+  select(dim1, dim2) %>% 
+  hdbscan(minPts = 30)
+cl.hdbscan
+
+```
+
+
+# View rules in several group
 
 ```{r, eval=FALSE}
 hclust.id = 1

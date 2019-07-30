@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: individual/group explanation using xgboost
-date: "2019/07/29"
+date: "2019/07/30"
 output:
   html_document:
     fig_caption: yes
@@ -44,6 +44,8 @@ require(ggrepel)
 ```
 
 # Preparation 
+
+If file = "./middle/data_and_model.Rds" doesn't exist, RUN `100_building_xgboost_model.Rmd`.
 
 
 ```r
@@ -360,7 +362,9 @@ ggsave(ggp.umap, filename =  "./output/image.files/400_map_umap.png",
 approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
   data.frame() %>% 
   select(-BIAS) %>%
-  uwot::umap(y = prediction.xgb)
+  uwot::umap(n_neighbors = 12,
+             learning_rate = 0.7,
+             y = prediction.xgb)
 
 # approxcontrib.xgb.sumap %>% str
 
@@ -379,72 +383,88 @@ ggp.sumap <- mapping.sumap %>%
   guides(colour = FALSE) + 
   labs(title = "supervised UMAP") 
 
-ggsave(ggp.sumap, filename =  "./output/image.files/400_map_sumap.png",
+ggsave(ggp.sumap, filename = "./output/image.files/400_map_sumap.png",
        height = 5, width = 7)
 ```
 
 ![](output/image.files/400_map_sumap.png)
 
+## Hierarchical Density-based spatial clustering of applications with noise (HDBSCAN)
 
-## Hierarchical clustering
+Reference:
 
+https://hdbscan.readthedocs.io/en/latest/how_hdbscan_works.html
 
-```r
-approxcontrib.xgb.sumap.hc <- mapping.sumap %>% 
-  select(-id) %>% 
-  as.matrix() %>% 
-  dist() %>% 
-  hclust()
-approxcontrib.xgb.sumap.hc
+according to:
 
-Call:
-hclust(d = .)
-
-Cluster method   : complete 
-Distance         : euclidean 
-Number of objects: 4000 
-```
-
-### explore cut.off for cutree
+https://cran.r-project.org/web/packages/dbscan/vignettes/hdbscan.html
 
 
 ```r
-cut.off = 15
-
-ggd.breakdown <- ggdendro::ggdendrogram(
-  data = approxcontrib.xgb.sumap.hc, 
-  rotate = TRUE, 
-  size = 2) +
-  geom_hline(yintercept = cut.off, color = "red")
-
-ggsave(ggd.breakdown, filename =  "./output/image.files/400_hclust_rules_sumap.png",
-    height = 12, width = 7)
+# install.packages("dbscan", dependencies = TRUE)
+require(dbscan)
+Loading required package: dbscan
 ```
 
-![](./output/image.files/400_hclust_rules_sumap.png)
+`minPts` not only acts as a minimum cluster size to detect, but also as a "smoothing" factor of the density estimates implicitly computed from HDBSCAN.
+
+
+```r
+# mapping.sumap %>% str
+cl.hdbscan <- mapping.sumap %>% 
+  select(dim1, dim2) %>% 
+  hdbscan(minPts = 30)
+cl.hdbscan
+HDBSCAN clustering for 4000 objects.
+Parameters: minPts = 30
+The clustering contains 30 cluster(s) and 106 noise points.
+
+  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17 
+106 126 159 676  46  60  81 123  71 187 116 144  73  90  93 107 209 153 
+ 18  19  20  21  22  23  24  25  26  27  28  29  30 
+ 42  86  79 302  37  68  69 277  45 207  38  90  40 
+
+Available fields: cluster, minPts, cluster_scores,
+                  membership_prob, outlier_scores, hc
+
+# par(mfcol=c(1,2))
+plot(cl.hdbscan, show_flat = TRUE)
+```
+
+![](400_breakdown_individual-explanation_and_clustering_files/figure-html/unnamed-chunk-16-1.png)<!-- -->
+
+```r
+# cl %>% str(1)
+
+# plot(dim1 ~ dim2, data = mapping.sumap)
+# plot(dim2 ~ dim1, data = mapping.sumap, col=cl.hdbscan$cluster+1, pch=20)
+# par(mfcol=c(1,1))
+# plot(approxcontrib.xgb.sumap.hdbscan, show_flat = TRUE)
+```
 
 
 ```r
 # install.packages("ggrepel", dependencies = TRUE)
 require(ggrepel)
 
-mapping.sumap$hclust <- approxcontrib.xgb.sumap.hc %>%
-  cutree(h = cut.off) %>%
-  factor()
+mapping.sumap$hdbscan <- factor(cl.hdbscan$cluster)
 
-hc.cent <- mapping.sumap %>% 
-  group_by(hclust) %>%
+hdbscan.cent <- mapping.sumap %>% 
+  filter(hdbscan != 0) %>% 
+  dplyr::group_by(hdbscan) %>%
   select(dim1, dim2) %>% 
   summarize_all(mean)
-Adding missing grouping variables: `hclust`
+Adding missing grouping variables: `hdbscan`
 
 ggp.sumap.labeled <- mapping.sumap %>% 
-  ggplot(aes(x = dim1, y = dim2, colour = hclust)) + 
+  ggplot(aes(x = dim1, y = dim2, colour = hdbscan)) + 
   geom_point(alpha = 0.3) + 
   theme_bw() +
-  ggrepel::geom_label_repel(data = hc.cent, aes(label = hclust)) + 
+  ggrepel::geom_label_repel(data = hdbscan.cent, 
+                            aes(label = hdbscan),
+                            label.size = 0.1) + 
   guides(colour = FALSE) + 
-  labs(title = "supervised UMAP + hclust") 
+  labs(title = "supervised UMAP + HDBSCAN") 
 
 
 ggsave(ggp.sumap.labeled, filename =  "./output/image.files/400_map_sumap_labeled.png",
@@ -468,12 +488,69 @@ ggp.tsne.sumap <- gridExtra::grid.arrange(
 ```r
 
 ggsave(ggp.tsne.sumap, filename =  "./output/image.files/400_tSNE_sumap.png",
-    height = 7, width = 7)
+    height = 10, width = 10)
 ```
 
 ![](output/image.files/400_tSNE_sumap.png)
 
-## View rules in several group
+#### a failure case
+
+
+```r
+approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
+  data.frame() %>% 
+  select(-BIAS) %>%
+  uwot::umap(n_neighbors = 20,
+             learning_rate = 0.8,
+             y = prediction.xgb)
+
+# approxcontrib.xgb.sumap %>% str
+
+mapping.sumap <- data.frame(
+  id     = 1:length(prediction.xgb),
+  dim1  = approxcontrib.xgb.sumap[, 1],
+  dim2  = approxcontrib.xgb.sumap[, 2],
+  pred   = prediction.xgb,
+  weight = weight.app)
+# mapping.sumap %>% str
+
+cl.hdbscan <- mapping.sumap %>% 
+  select(dim1, dim2) %>% 
+  hdbscan(minPts = 10)
+
+mapping.sumap$hdbscan <- factor(cl.hdbscan$cluster)
+
+ggp.sumap.labeled <- mapping.sumap %>% 
+  ggplot(aes(x = dim1, y = dim2, colour = hdbscan)) + 
+  geom_point(alpha = 0.3) + 
+  theme_bw() +
+  guides(colour = FALSE) + 
+  labs(title = "supervised UMAP + HDBSCAN") 
+
+ggsave(ggp.sumap.labeled, filename =  "./output/image.files/400_map_sumap_labeled_fail.png",
+    height = 7, width = 7)
+```
+
+![](output/image.files/400_map_sumap_labeled_fail.png)
+
+```r
+cl.hdbscan <- mapping.sumap %>% 
+  select(dim1, dim2) %>% 
+  hdbscan(minPts = 30)
+cl.hdbscan
+HDBSCAN clustering for 4000 objects.
+Parameters: minPts = 30
+The clustering contains 5 cluster(s) and 28 noise points.
+
+   0    1    2    3    4    5 
+  28   46   49  357  940 2580 
+
+Available fields: cluster, minPts, cluster_scores,
+                  membership_prob, outlier_scores, hc
+```
+
+
+# View rules in several group
 
 
 ```r
