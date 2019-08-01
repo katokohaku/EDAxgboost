@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: group explanation using xgboost: clustering stratification of rules
+title: "group explanation using xgboost: clustering stratification of rules"
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -78,41 +78,43 @@ prediction.xgb <- xgboost:::predict.xgb.Booster(model.xgb, newdata = train.matri
 
 ## get breakdown explanations
 
-Feature contributions (SHAP values using built-in function.) for "gbtree" booster.
+For "gbtree" booster, structureal based contribution of each feature is determined by the decision path that traverses the tree and thus the guards/contributions that are passed along the way.
+
+see: http://blog.datadive.net/interpreting-random-forests/
+
 
 ```{r}
-shap.xgb <- xgboost:::predict.xgb.Booster(
+approxcontrib.xgb <- xgboost:::predict.xgb.Booster(
   model.xgb, newdata = train.matrix, 
-  predcontrib = TRUE, approxcontrib = FALSE)
+  predcontrib = TRUE, approxcontrib = TRUE)
 
-shap.xgb %>% head(4) %>% t
+approxcontrib.xgb %>% head(4) %>% t
 
 ```
 
 ```{r}
 prediction.xgb %>% head()
-weight.shap <- shap.xgb %>% rowSums()
-weight.shap %>% head
-1/(1 + exp(-weight.shap)) %>% head
+weight.app <- approxcontrib.xgb %>% rowSums()
+weight.app %>% head
+1/(1 + exp(-weight.app)) %>% head
 
 ```
-
 
 ```{r}
 source("./R/waterfallBreakdown.R")
 
 ggp.shap <- waterfallBreakdown(
-  breakdown = unlist(shap.xgb[1, ]), type = "binary",
-  labels = paste(colnames(shap.xgb), 
+  breakdown = unlist(approxcontrib.xgb[1, ]), type = "binary",
+  labels = paste(colnames(approxcontrib.xgb), 
                  c(train.matrix[1, ],""), sep =" = ")) +
   ggtitle("SHAP value")
 
-ggsave(ggp.shap, filename = "./output/image.files/420_explain_single_obs_SHAP.png",
+ggsave(ggp.shap, filename = "./output/image.files/420_explain_single_obs.png",
        width = 3.5, height = 4)
 ```
 
 
-![](output/image.files/420_explain_single_obs_SHAP.png)
+![](output/image.files/420_explain_single_obs.png)
 
 # clustering of observation based on breakdown
 
@@ -122,23 +124,23 @@ according to :
 http://jmonlong.github.io/Hippocamplus/2017/12/02/tsne-and-clustering/
 
 ```{r}
-# shap.xgb %>% str
+# approxcontrib.xgb %>% str
 # prediction.xgb %>% str
 
-shap.xgb.tsne <- shap.xgb %>% 
+approxcontrib.xgb.tsne <- approxcontrib.xgb %>% 
   # data.frame() %>% 
   data.frame(pred = prediction.xgb) %>% 
   select(-BIAS) %>%
   Rtsne::Rtsne(perplexity = 50, check_duplicates = FALSE)
 
-# shap.xgb.tsne %>% str
+# approxcontrib.xgb.tsne %>% str
 
 mapping.tsne <- data.frame(
   id     = 1:length(prediction.xgb),
-  dim1  = shap.xgb.tsne$Y[, 1],
-  dim2  = shap.xgb.tsne$Y[, 2],
+  dim1  = approxcontrib.xgb.tsne$Y[, 1],
+  dim2  = approxcontrib.xgb.tsne$Y[, 2],
   pred   = prediction.xgb,
-  weight = weight.shap)
+  weight = weight.app)
 
 ggp.tsne <- mapping.tsne %>% 
   ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
@@ -158,12 +160,12 @@ ggsave(ggp.tsne, filename =  "./output/image.files/420_map_tSNE.png",
 ## Hierarchical clustering
 
 ```{r }
-shap.xgb.tsne.hc <- mapping.tsne %>% 
+approxcontrib.xgb.tsne.hc <- mapping.tsne %>% 
   select(-id) %>% 
   as.matrix() %>% 
   dist() %>% 
   hclust()
-shap.xgb.tsne.hc
+approxcontrib.xgb.tsne.hc
 
 ```
 
@@ -174,7 +176,7 @@ library(ggdendro)
 
 cut.off = 12
 
-ggd.breakdown <- ggdendrogram(shap.xgb.tsne.hc, rotate = TRUE, size = 2) +
+ggd.breakdown <- ggdendrogram(approxcontrib.xgb.tsne.hc, rotate = TRUE, size = 2) +
   geom_hline(yintercept = cut.off, color = "red")
 
 ggsave(ggd.breakdown, filename =  "./output/image.files/420_hclust_rules.png",
@@ -187,7 +189,7 @@ ggsave(ggd.breakdown, filename =  "./output/image.files/420_hclust_rules.png",
 ```{r}
 require(ggrepel)
 
-mapping.tsne$hclust <- shap.xgb.tsne.hc %>%
+mapping.tsne$hclust <- approxcontrib.xgb.tsne.hc %>%
   cutree(h = cut.off) %>%
   factor()
 
@@ -220,19 +222,19 @@ https://rdrr.io/cran/uwot/man/umap.html
 ### non-optional
 
 ```{r}
-shap.xgb.umap <- shap.xgb %>% 
+approxcontrib.xgb.umap <- approxcontrib.xgb %>% 
   data.frame() %>% 
   select(-BIAS) %>%
   uwot::umap()
 
-shap.xgb.umap %>% str
+approxcontrib.xgb.umap %>% str
 
 mapping.umap <- data.frame(
   id     = 1:length(prediction.xgb),
-  dim1  = shap.xgb.umap[, 1],
-  dim2  = shap.xgb.umap[, 2],
+  dim1  = approxcontrib.xgb.umap[, 1],
+  dim2  = approxcontrib.xgb.umap[, 2],
   pred   = prediction.xgb,
-  weight = weight.shap)
+  weight = weight.app)
 # mapping.umap %>% str
 
 ggp.umap <- mapping.umap %>% 
@@ -252,21 +254,21 @@ ggsave(ggp.umap, filename =  "./output/image.files/420_map_umap.png",
 ### supervised dimension reduction
 
 ```{r}
-shap.xgb.sumap <- shap.xgb %>% 
+approxcontrib.xgb.sumap <- approxcontrib.xgb %>% 
   data.frame() %>% 
   select(-BIAS) %>%
   uwot::umap(n_neighbors = 12,
              learning_rate = 0.7,
              y = prediction.xgb)
 
-# shap.xgb.sumap
+# approxcontrib.xgb.sumap
 
 mapping.sumap <- data.frame(
   id     = 1:length(prediction.xgb),
-  dim1  = shap.xgb.sumap[, 1],
-  dim2  = shap.xgb.sumap[, 2],
+  dim1  = approxcontrib.xgb.sumap[, 1],
+  dim2  = approxcontrib.xgb.sumap[, 2],
   pred   = prediction.xgb,
-  weight = weight.shap)
+  weight = weight.app)
 # mapping.sumap %>% str
 
 ggp.sumap <- mapping.sumap %>% 
@@ -358,12 +360,12 @@ ggsave(ggp.tsne.sumap, filename =  "./output/image.files/420_tSNE_sumap.png",
 ![](output/image.files/420_tSNE_sumap.png)
 
 
-# View rules in several group
+# View rules in a cluster
 
 NOTE: observations with `hdbscan == 0` are as noise by hDBSCAN.
 
-```{r, eval=FALSE}
-clust.id = 2
+```{r}
+clust.id = 1
 sample.n = 12
 
 target <- mapping.sumap %>% 
@@ -375,9 +377,9 @@ for(i in 1:sample.n){
   idx = target$id[i]
   
   sw[[i]]  <- waterfallBreakdown(
-    breakdown = unlist(shap.xgb[idx, ]),
+    breakdown = unlist(approxcontrib.xgb[idx, ]),
     type = "binary",
-    labels = paste(colnames(shap.xgb), 
+    labels = paste(colnames(approxcontrib.xgb), 
                    c(train.matrix[idx, ],""), sep =" = ")) +
     ggtitle(sprintf("predict = %.04f\nweight = %.04f",
                     target$predict[i], target$weight[i]))
@@ -395,14 +397,14 @@ ggsave(ggp.sw, height = 9,
 # 
 require(ggridges)
 
-# shap.xgb %>% str
+# approxcontrib.xgb %>% str
 feature.value.long <- train.matrix %>% 
   scale() %>%
   data.frame() %>% 
   mutate(id = as.character(1:n())) %>% 
   gather(key = feature, value = value, -id)
 
-feature.impact.long <- shap.xgb[target$id, ] %>% 
+feature.impact.long <- approxcontrib.xgb[target$id, ] %>% 
   data.frame(id = as.character(target$id)) %>% 
   select(-BIAS) %>% 
   gather(key = feature, value = impact, -id) %>% 
@@ -437,8 +439,11 @@ ggp.contribution <- feature.impact.long %>%
   theme(legend.position = 'none') +
   labs(title = "feature value", x="", y="")
 
-gridExtra::grid.arrange(grobs = list(ggp.contribution, ggp.impact), ncol = 2)
+ggp.fcl <- gridExtra::arrangeGrob(grobs = list(ggp.contribution, ggp.impact), ncol = 2)
+ggsave(ggp.fcl, width = 9, height = 6,
+       filename = "./output/image.files/420_stratified_clustering_cl1.png")
 
 ```
 
+![](./output/image.files/420_stratified_clustering_cl1.png)
 
