@@ -1,6 +1,6 @@
 ---
 author: "Satoshi Kato"
-title: individual/group explanation using xgboost
+title: group explanation using xgboost: clustering stratification of rules
 date: "`r format(Sys.time(), '%Y/%m/%d')`"
 output:
   html_document:
@@ -72,6 +72,8 @@ test.label  <- loaded.obs$data$test$label
 test.matrix <- loaded.obs$data$test$matrix
 test.xgb.DMatrix  <- xgb.DMatrix(test.matrix, missing = NA)
 
+prediction.xgb <- xgboost:::predict.xgb.Booster(model.xgb, newdata = train.matrix)
+
 ```
 
 ## get breakdown explanations
@@ -136,7 +138,7 @@ mapping.tsne <- data.frame(
   dim1  = shap.xgb.tsne$Y[, 1],
   dim2  = shap.xgb.tsne$Y[, 2],
   pred   = prediction.xgb,
-  weight = weight.app)
+  weight = weight.shap)
 
 ggp.tsne <- mapping.tsne %>% 
   ggplot(aes(x = dim1, y = dim2, colour = prediction.xgb)) + 
@@ -230,7 +232,7 @@ mapping.umap <- data.frame(
   dim1  = shap.xgb.umap[, 1],
   dim2  = shap.xgb.umap[, 2],
   pred   = prediction.xgb,
-  weight = weight.app)
+  weight = weight.shap)
 # mapping.umap %>% str
 
 ggp.umap <- mapping.umap %>% 
@@ -264,7 +266,7 @@ mapping.sumap <- data.frame(
   dim1  = shap.xgb.sumap[, 1],
   dim2  = shap.xgb.sumap[, 2],
   pred   = prediction.xgb,
-  weight = weight.app)
+  weight = weight.shap)
 # mapping.sumap %>% str
 
 ggp.sumap <- mapping.sumap %>% 
@@ -361,8 +363,8 @@ ggsave(ggp.tsne.sumap, filename =  "./output/image.files/420_tSNE_sumap.png",
 NOTE: observations with `hdbscan == 0` are as noise by hDBSCAN.
 
 ```{r, eval=FALSE}
-clust.id = 1
-sample.n = 6
+clust.id = 2
+sample.n = 12
 
 target <- mapping.sumap %>% 
   filter(hdbscan == clust.id) %>% 
@@ -381,11 +383,62 @@ for(i in 1:sample.n){
                     target$predict[i], target$weight[i]))
 }
 
-ggp.sw <- gridExtra::arrangeGrob(grobs = sw, ncol = 3)
-ggsave(ggp.sw, , height = 6
+ggp.sw <- gridExtra::arrangeGrob(grobs = sw, ncol = 4)
+ggsave(ggp.sw, height = 9,
        filename = "./output/image.files/420_rules_cl1.png")
 ```
 
 ![](./output/image.files/420_rules_cl1.png)
+## summarise for each contribution
+
+```{r}
+# 
+require(ggridges)
+
+# shap.xgb %>% str
+feature.value.long <- train.matrix %>% 
+  scale() %>%
+  data.frame() %>% 
+  mutate(id = as.character(1:n())) %>% 
+  gather(key = feature, value = value, -id)
+
+feature.impact.long <- shap.xgb[target$id, ] %>% 
+  data.frame(id = as.character(target$id)) %>% 
+  select(-BIAS) %>% 
+  gather(key = feature, value = impact, -id) %>% 
+  left_join(feature.value.long, by = c("id", "feature")) %>% 
+  mutate(feature = factor(feature))
+
+
+
+ggp.impact <- feature.impact.long %>% 
+  ggplot(aes(x = impact, y = feature, point_color = value, fill = feature))+
+  geom_density_ridges(
+    jittered_points = TRUE, 
+    position = "raincloud",
+    alpha = 0.7, 
+    scale = 0.9
+  ) +
+  guides(label = FALSE,colour = FALSE) + 
+  scale_color_gradient(low="#FFCC33", high="#6600CC", labels=c("Low","High")) +
+  theme(legend.position = 'none') +
+  labs(title = "feature contribution", x="", y="")
+
+ggp.contribution <- feature.impact.long %>% 
+  ggplot(aes(x = value, y = feature, point_color = value, fill = feature))+
+  geom_density_ridges(
+    jittered_points = TRUE, 
+    position = "raincloud",
+    alpha = 0.7, 
+    scale = 0.9
+  ) +
+  guides(label = FALSE,colour = FALSE) + 
+  scale_color_gradient(low="#FFCC33", high="#6600CC", labels=c("Low","High")) +
+  theme(legend.position = 'none') +
+  labs(title = "feature value", x="", y="")
+
+gridExtra::grid.arrange(grobs = list(ggp.contribution, ggp.impact), ncol = 2)
+
+```
 
 
