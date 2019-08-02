@@ -1,6 +1,6 @@
 #' rain could plot wrapper for ggRidges package 
 #'
-#' template wrapper ggridges::geom_density_ridges(., jittered_points = TRUE, position = "raincloud")
+#' Template wrapper for ggridges::geom_density_ridges(., jittered_points = TRUE, position = "raincloud")
 #'
 #' @param .data a data frame or a matrix 
 #' @param title title text passed to labs(title = title, ...)
