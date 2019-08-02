@@ -26,7 +26,7 @@
 #
 
 ggRaincloud <- function(.data, title = "", xlab = "", ylab = "", scaled = TRUE,
-                        .alpha = 0.3, .scale = 0.9, .vervose = TRUE, ...) {
+                        .alpha = 0.3, .scale = 0.9, .vervose = FALSE, ...) {
   stopifnot(!missing(.data))
   
   mutate_all2 <- dplyr::mutate_all
@@ -35,15 +35,17 @@ ggRaincloud <- function(.data, title = "", xlab = "", ylab = "", scaled = TRUE,
   }
   
   .data <- .data %>%
+    data.frame() %>% 
     mutate_if(is.character, factor) %>%
     mutate_all2(as.numeric)
   
   if(scaled) {
-    .data <- scale(.data)
+    .data <- .data %>% 
+      scale() %>% 
+      data.frame()
   }
   
   feature.value.long <- .data %>%
-    data.frame() %>% 
     gather(key = feature, value = value)
   
   ggp.raincloud <- feature.value.long %>% 
