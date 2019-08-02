@@ -25,12 +25,12 @@
 #' @importFrom ggRidges geom_density_ridges
 #
 
-ggRaincloud <- function(.data, title = "", xlab = "", ylab = "", scaled = TRUE,
-                        .alpha = 0.3, .scale = 0.9, .vervose = FALSE, ...) {
+ggRaincloud <- function(.data, title = "", xlab = "", ylab = "", values.scaled = TRUE,
+                        .alpha = 0.3, .yscale = 0.7, .verbose = FALSE, ...) {
   stopifnot(!missing(.data))
   
   mutate_all2 <- dplyr::mutate_all
-  if(.vervose) {
+  if(.verbose) {
     mutate_all2 <- tidylog::mutate_all
   }
   
@@ -39,7 +39,7 @@ ggRaincloud <- function(.data, title = "", xlab = "", ylab = "", scaled = TRUE,
     mutate_if(is.character, factor) %>%
     mutate_all2(as.numeric)
   
-  if(scaled) {
+  if(values.scaled) {
     .data <- .data %>% 
       scale() %>% 
       data.frame()
@@ -51,7 +51,7 @@ ggRaincloud <- function(.data, title = "", xlab = "", ylab = "", scaled = TRUE,
   ggp.raincloud <- feature.value.long %>% 
     ggplot(aes(x = value, y = feature, color = feature, fill = feature))+
     ggridges::geom_density_ridges(
-      jittered_points = TRUE, position = "raincloud", alpha = .alpha, scale = .scale) +
+      jittered_points = TRUE, position = "raincloud", alpha = .alpha, scale = .yscale) +
     theme(legend.position = 'none', ...) +
     labs(title = title, x=xlab, y=ylab)
   
