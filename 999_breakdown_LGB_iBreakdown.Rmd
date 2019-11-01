@@ -1,0 +1,228 @@
+---
+author: "Satoshi Kato"
+title: iBreakDown plots for LightGBM models
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    keep_md: yes
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = TRUE, 
+                      comment = "", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+set.seed(1)
+```
+
+```{r install.requirements, eval = FALSE}
+install.packages("DALEX", dependencies = TRUE)
+install.packages("r2d3",  dependencies = TRUE)
+
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(magrittr)
+require(xgboost)
+
+require(DALEX)
+require(iBreakDown)
+
+```
+
+# Purpose 
+
+Prediction Breakdown according to https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_regression.html
+
+
+```{r}
+library(DALEX)
+library(iBreakDown)
+
+```
+
+# Build XGB model
+
+```{r prep.data.train}
+head(dragons)
+
+train_data  <- dragons %>% select(-life_length) %>% mutate_all(as.numeric)
+train_label <- dragons %>% pull(life_length)
+train_xgbDMatrix <- xgb.DMatrix(as.matrix(train_data), label = train_label)
+
+```
+
+For parameter settings, see. https://xgboost.readthedocs.io/en/latest/parameter.html 
+
+```{r parameter.settings}
+params <- list(
+  booster      = "gbtree",
+  objective    = "reg:squarederror",
+  eval_metric  = "rmse",
+  max_depth = 5,
+  colsample_bytree= 0.8,
+  subsample = 0.8,
+  min_child_weight = 3,
+  eta   = 0.05,
+  alpha = 0.25,
+  gamma = 0
+) 
+
+```
+
+```{r xgb.train}
+model_xgb <- xgb.train(params  = params, 
+                       verbose = 1,
+                       data    = train_xgbDMatrix,
+                       nrounds = 300)
+
+```
+
+# breakdown obsavation
+
+according to:
+
+https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_classification.html
+
+and:
+
+https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_titanic.html
+
+
+
+Following example fail to build explainer.
+
+```{r}
+require(DALEX)
+explain_xgb <- DALEX::explain(
+  model = model_xgb, 
+  data = dragons_test,
+  y = dragons_test$life_length,
+  label = "XGBoost reg:squarederror"
+)
+
+```
+
+Thus, several tricks are needed to break down a prediction by XGB model
+
+
+```{r}
+p_fun_xgb <- function(object, newdata) {
+
+  # test.matrix <- as.matrix(newdata)
+  newdata <- dplyr::mutate_all(newdata, as.numeric)
+  newdata <- xgb.DMatrix(as.matrix(newdata))
+  pred <- predict(object, newdata)
+  pred
+  
+}
+```
+
+```{r prep.data.test}
+test_data  <- dragons_test %>% select(-life_length)
+test_label <- dragons_test %>% pull(life_length)
+
+```
+
+```{r}
+explain_xgb <- DALEX::explain(
+  model = model_xgb, 
+  data = test_data,
+  y = test_label,
+  label = "XGBoost reg/SE",
+  predict_function = p_fun_xgb
+)
+
+```
+
+
+# Visualization
+
+HEREAFTER, just Copy & Paste from official vignette:
+
+## local_attributions
+
+```{r}
+bd_xgb <- local_attributions(
+  explain_xgb,
+  new_observation =  test_data[1, ],
+  keep_distributions = TRUE)
+
+```
+
+
+simply print the result.
+
+```{r}
+bd_xgb
+
+```
+
+Or plot it.
+
+```{r}
+plot(bd_xgb)
+
+```
+
+Use the `baseline` argument to set the origin of plots.
+
+```{r}
+plot(bd_xgb, baseline = 0)
+
+```
+
+
+Use the `plot_distributions` argument to see distributions of partial predictions.
+
+```{r}
+plot(bd_xgb, plot_distributions = TRUE)
+
+```
+
+# Calculate uncertainty for variable attributions
+
+```{r}
+bdun_xgb <- break_down_uncertainty(
+  explain_xgb,
+  new_observation =  test_data[1, ],
+  path = "average"
+)
+
+```
+
+```{r}
+plot(bdun_xgb)
+
+```
+
+## Show only top features
+
+```{r fig.height=4, fig.width=4}
+# install.packages("r2d3")
+require(r2d3)
+plotD3(bd_xgb, max_features = 3)
+
+```
+
