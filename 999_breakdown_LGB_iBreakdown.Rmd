@@ -35,7 +35,13 @@ knitr::opts_chunk$set(collapse = TRUE,
 set.seed(1)
 ```
 
+# Purpose 
+
+Prediction Breakdown according to https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_regression.html
+
 ```{r install.requirements, eval = FALSE}
+devtools::install_github("Laurae2/lgbdl")
+lgbdl::lgb.dl()
 install.packages("DALEX", dependencies = TRUE)
 install.packages("r2d3",  dependencies = TRUE)
 
@@ -44,60 +50,75 @@ install.packages("r2d3",  dependencies = TRUE)
 ```{r require.packages, message=FALSE}
 require(tidyverse)
 require(magrittr)
-require(xgboost)
+require(lightgbm)
 
 require(DALEX)
 require(iBreakDown)
 
 ```
 
-# Purpose 
 
-Prediction Breakdown according to https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_regression.html
+# LightGBM
 
-
-```{r}
-library(DALEX)
-library(iBreakDown)
-
-```
-
-# Build XGB model
+## Create LGB Dataset
 
 ```{r prep.data.train}
-head(dragons)
+str(dragons)
 
 train_data  <- dragons %>% select(-life_length) %>% mutate_all(as.numeric)
 train_label <- dragons %>% pull(life_length)
-train_xgbDMatrix <- xgb.DMatrix(as.matrix(train_data), label = train_label)
+categorical_feature <- dragons %>% colnames() %>% is_in(c("colour")) %>% which()
+
+train.lgb.Dataset <- lgb.Dataset(
+  data = as.matrix(train_data), 
+  label = train_label, 
+  categorical_feature  = categorical_feature)
 
 ```
 
-For parameter settings, see. https://xgboost.readthedocs.io/en/latest/parameter.html 
 
-```{r parameter.settings}
-params <- list(
-  booster      = "gbtree",
-  objective    = "reg:squarederror",
-  eval_metric  = "rmse",
-  max_depth = 5,
-  colsample_bytree= 0.8,
-  subsample = 0.8,
-  min_child_weight = 3,
-  eta   = 0.05,
-  alpha = 0.25,
-  gamma = 0
-) 
+## parameter settings
+
+see.
+
+https://www.kaggle.com/andrewmvd/lightgbm-in-r
+
+and
+
+https://lightgbm.readthedocs.io/en/latest/Parameters.html
+
+```{r parameter.settings, echo = TRUE}
+lgb.grid = list(
+  boosting  = "dart",
+  objective = "regression",
+  metric = "root_mean_squared_error",
+  max_bin = 50,
+  min_data_in_leaf = 30,
+  max_depth = 7)
+
+```
+
+```{r, eval = FALSE}
+lgb.model.cv = lgb.cv(
+  params = lgb.grid, 
+  data = train.lgb.Dataset, 
+  learning_rate = 0.02, 
+  num_leaves = 25,
+  num_threads = 1,
+  nrounds = 7000, early_stopping_rounds = 50,
+  eval_freq = 20, verbose = 1,
+  categorical_feature = categorical_feature, nfold = 5, stratified = TRUE)
 
 ```
 
-```{r xgb.train}
-model_xgb <- xgb.train(params  = params, 
-                       verbose = 1,
-                       data    = train_xgbDMatrix,
-                       nrounds = 300)
-
+```{r}
+lgb.model = lgb.train(
+  params = lgb.grid, data = train.lgb.Dataset,
+  learning_rate = 0.02, num_leaves = 25, num_threads = 2 , nrounds = 300,
+  eval_freq = 20, verbose = 1,
+  categorical_feature = categorical_feature)
 ```
+
 
 # breakdown obsavation
 
