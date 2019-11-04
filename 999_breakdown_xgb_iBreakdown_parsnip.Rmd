@@ -1,0 +1,98 @@
+---
+author: "Satoshi Kato"
+title: "group explanation using xgboost: clustering stratification of rules"
+date: "`r format(Sys.time(), '%Y/%m/%d')`"
+output:
+  html_document:
+    fig_caption: yes
+    pandoc_args:
+      - --from
+      - markdown+autolink_bare_uris+tex_math_single_backslash-implicit_figures
+    keep_md: yes
+    toc: yes
+  word_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(progress = TRUE, 
+                     verbose  = TRUE, 
+                     root.dir = ".")
+
+knitr::opts_chunk$set(collapse = TRUE, 
+                      comment = "> ", 
+                      message = TRUE, 
+                      warning = FALSE, 
+                      include = TRUE,
+                      echo    = TRUE)
+
+set.seed(1)
+```
+
+```{r require.packages, message=FALSE}
+require(tidyverse)
+require(magrittr)
+require(tidymodels)
+require(DALEX)
+require(iBreakDown)
+
+```
+
+```{r}
+str(dragons)
+
+fit_xgb <- boost_tree("regression") %>%
+  set_engine("xgboost") %>%
+  fit(life_length ~ ., data = dragons)
+
+```
+
+```{r}
+explain_xgb <- DALEX::explain(
+  model = fit_xgb, 
+  data = dragons_test,
+  y = dragons_test$life_length,
+  label = "XGBoost reg/parsnip"
+)
+
+```
+
+## variable_importance
+
+```{r}
+explain_xgb %>% variable_importance() %>% plot()
+
+```
+
+## PDplot
+
+```{r}
+explain_xgb %>% single_variable(variable = "scars", type = "pdp") %>% plot()
+
+```
+
+## ALE plot
+
+```{r}
+# install.packages("ALEPlot", dependencies = TRUE)
+explain_xgb %>% single_variable(variable = "scars", type = "ale") %>% plot()
+
+```
+
+## local_attributions
+
+```{r}
+explain_xgb %>% 
+  local_attributions(new_observation = dragons_test[1, ]) %>% 
+  plot()
+
+```
+
+```
+
