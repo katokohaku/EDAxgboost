@@ -41,7 +41,7 @@ Prediction Breakdown according to https://cran.r-project.org/web/packages/iBreak
 
 ```{r install.requirements, eval = FALSE}
 devtools::install_github("Laurae2/lgbdl")
-lgbdl::lgb.dl()
+lgbdl::lgb.dl(compiler = "vs")
 install.packages("DALEX", dependencies = TRUE)
 install.packages("r2d3",  dependencies = TRUE)
 
@@ -91,32 +91,54 @@ https://lightgbm.readthedocs.io/en/latest/Parameters.html
 lgb.grid = list(
   boosting  = "dart",
   objective = "regression",
-  metric = "root_mean_squared_error",
-  max_bin = 50,
-  min_data_in_leaf = 30,
-  max_depth = 7)
+  metric = "root_mean_squared_error"#,
+  # max_depth = 7
+)
 
-```
-
-```{r, eval = FALSE}
-lgb.model.cv = lgb.cv(
+model_lgb.cv <- NULL
+model_lgb.cv <- lgb.cv(
   params = lgb.grid, 
   data = train.lgb.Dataset, 
   learning_rate = 0.02, 
-  num_leaves = 25,
+  num_leaves = 30,
   num_threads = 1,
-  nrounds = 7000, early_stopping_rounds = 50,
+  nrounds = 2000, early_stopping_rounds = 50,
+  eval_freq = 100, verbose = 1,
+  categorical_feature = categorical_feature, 
+  nfold = 5, stratified = TRUE)
+
+best.iter <- model_lgb.cv$best_iter
+best.iter
+```
+
+```{r}
+model_lgb = lgb.train(
+  params = lgb.grid, 
+  data = train.lgb.Dataset, 
+  learning_rate = 0.02, 
+  num_leaves = 20,
+  num_threads = 1,
+  nrounds = best.iter,
   eval_freq = 20, verbose = 1,
-  categorical_feature = categorical_feature, nfold = 5, stratified = TRUE)
+  categorical_feature = categorical_feature)
 
 ```
 
 ```{r}
-lgb.model = lgb.train(
-  params = lgb.grid, data = train.lgb.Dataset,
-  learning_rate = 0.02, num_leaves = 25, num_threads = 2 , nrounds = 300,
-  eval_freq = 20, verbose = 1,
-  categorical_feature = categorical_feature)
+test_data  <- dragons_test %>% select(-life_length) %>% mutate_all(as.numeric)
+test_label <- dragons_test %>% pull(life_length)
+
+preds  <- predict(model_lgb, data = as.matrix(test_data))
+plot(test_label ~ preds)
+abline(0, 1, col = "red")
+
+```
+```{r}
+varimp_lgb <- lightgbm::lgb.importance(model_lgb)
+varimp_lgb %>% 
+  arrange(desc(Gain)) %>%
+  mutate_at(vars(-Feature), function(x) round(x, digit = 3))
+
 ```
 
 
@@ -131,30 +153,15 @@ and:
 https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_titanic.html
 
 
-
-Following example fail to build explainer.
-
-```{r}
-require(DALEX)
-explain_xgb <- DALEX::explain(
-  model = model_xgb, 
-  data = dragons_test,
-  y = dragons_test$life_length,
-  label = "XGBoost reg:squarederror"
-)
-
-```
-
-Thus, several tricks are needed to break down a prediction by XGB model
+predict_function are needed to break down a prediction by LGBM model
 
 
 ```{r}
-p_fun_xgb <- function(object, newdata) {
+p_fun_lgb <- function(object, newdata) {
 
   # test.matrix <- as.matrix(newdata)
   newdata <- dplyr::mutate_all(newdata, as.numeric)
-  newdata <- xgb.DMatrix(as.matrix(newdata))
-  pred <- predict(object, newdata)
+  pred <- predict(object, as.matrix(newdata))
   pred
   
 }
@@ -167,12 +174,12 @@ test_label <- dragons_test %>% pull(life_length)
 ```
 
 ```{r}
-explain_xgb <- DALEX::explain(
-  model = model_xgb, 
+explain_lgb <- DALEX::explain(
+  model = model_lgb, 
   data = test_data,
   y = test_label,
-  label = "XGBoost reg/SE",
-  predict_function = p_fun_xgb
+  label = "LightGBM reg/RMSE",
+  predict_function = p_fun_lgb
 )
 
 ```
@@ -182,11 +189,19 @@ explain_xgb <- DALEX::explain(
 
 HEREAFTER, just Copy & Paste from official vignette:
 
+## permutaion importance
+
+```{r}
+vi_lgb <- variable_importance(explain_lgb, loss_function = loss_root_mean_square, type = "ratio")
+plot(vi_lgb)
+
+```
+
 ## local_attributions
 
 ```{r}
-bd_xgb <- local_attributions(
-  explain_xgb,
+bd_lgb <- local_attributions(
+  explain_lgb,
   new_observation =  test_data[1, ],
   keep_distributions = TRUE)
 
@@ -196,21 +211,21 @@ bd_xgb <- local_attributions(
 simply print the result.
 
 ```{r}
-bd_xgb
+bd_lgb
 
 ```
 
 Or plot it.
 
 ```{r}
-plot(bd_xgb)
+plot(bd_lgb)
 
 ```
 
 Use the `baseline` argument to set the origin of plots.
 
 ```{r}
-plot(bd_xgb, baseline = 0)
+plot(bd_lgb, baseline = 0)
 
 ```
 
@@ -218,15 +233,15 @@ plot(bd_xgb, baseline = 0)
 Use the `plot_distributions` argument to see distributions of partial predictions.
 
 ```{r}
-plot(bd_xgb, plot_distributions = TRUE)
+plot(bd_lgb, plot_distributions = TRUE)
 
 ```
 
 # Calculate uncertainty for variable attributions
 
 ```{r}
-bdun_xgb <- break_down_uncertainty(
-  explain_xgb,
+bdun_lgb <- break_down_uncertainty(
+  explain_lgb,
   new_observation =  test_data[1, ],
   path = "average"
 )
@@ -234,7 +249,7 @@ bdun_xgb <- break_down_uncertainty(
 ```
 
 ```{r}
-plot(bdun_xgb)
+plot(bdun_lgb)
 
 ```
 
@@ -243,7 +258,7 @@ plot(bdun_xgb)
 ```{r fig.height=4, fig.width=4}
 # install.packages("r2d3")
 require(r2d3)
-plotD3(bd_xgb, max_features = 3)
+plotD3(bd_lgb, max_features = 3)
 
 ```
 
