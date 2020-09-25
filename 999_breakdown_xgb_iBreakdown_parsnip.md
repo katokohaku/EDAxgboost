@@ -1,7 +1,7 @@
 ---
 author: "Satoshi Kato"
 title: "group explanation using xgboost: clustering stratification of rules"
-date: "2019/11/04"
+date: "2020/09/25"
 output:
   html_document:
     fig_caption: yes
@@ -33,6 +33,12 @@ require(iBreakDown)
 
 
 ```r
+parsnip:::possible_engines(boost_tree("regression"))
+>  [1] "xgboost" "C5.0"    "spark"
+```
+
+
+```r
 str(dragons)
 >  'data.frame':	2000 obs. of  8 variables:
 >   $ year_of_birth       : num  -1291 1589 1528 1645 -8 ...
@@ -45,7 +51,7 @@ str(dragons)
 >   $ life_length         : num  1368 1377 1604 1434 985 ...
 
 fit_xgb <- boost_tree("regression") %>%
-  set_engine("xgboost") %>%
+  parsnip::set_engine("xgboost") %>%
   fit(life_length ~ ., data = dragons)
 ```
 
@@ -63,9 +69,9 @@ explain_xgb <- DALEX::explain(
 >    -> target variable   :  1000  values 
 >    -> predict function  :  yhat.model_fit  will be used ( [33m default [39m )
 >    -> predicted values  :  numerical, min =  543.024 , mean =  1360.134 , max =  3482.104  
+>    -> model_info        :  package parsnip , ver. 0.1.3 , task regression ( [33m default [39m ) 
 >    -> residual function :  difference between y and yhat ( [33m default [39m )
 >    -> residuals         :  numerical, min =  -451.9162 , mean =  76.0022 , max =  781.7332  
->    -> model_info        :  package parsnip , ver. 0.0.4 , task regression ( [33m default [39m ) 
 >   [32m A new explainer has been created! [39m
 ```
 
@@ -76,7 +82,7 @@ explain_xgb <- DALEX::explain(
 explain_xgb %>% variable_importance() %>% plot()
 ```
 
-![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 
 ## PDplot
 
@@ -85,7 +91,7 @@ explain_xgb %>% variable_importance() %>% plot()
 explain_xgb %>% single_variable(variable = "scars", type = "pdp") %>% plot()
 ```
 
-![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
 
 ## ALE plot
 
@@ -95,7 +101,7 @@ explain_xgb %>% single_variable(variable = "scars", type = "pdp") %>% plot()
 explain_xgb %>% single_variable(variable = "scars", type = "ale") %>% plot()
 ```
 
-![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
 
 ## local_attributions
 
@@ -106,7 +112,7 @@ explain_xgb %>%
   plot()
 ```
 
-![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+![](999_breakdown_xgb_iBreakdown_parsnip_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 
-```
+
 

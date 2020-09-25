@@ -21,12 +21,16 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
+# lgbdl::lgb.dl()
+# install.packages("DALEX", dependencies = TRUE)
+# install.packages("r2d3",  dependencies = TRUE)
+
 knitr::opts_knit$set(progress = TRUE, 
                      verbose  = TRUE, 
                      root.dir = ".")
 
 knitr::opts_chunk$set(collapse = TRUE, 
-                      comment = "", 
+                      comment = "#> ", 
                       message = TRUE, 
                       warning = FALSE, 
                       include = TRUE,
@@ -37,15 +41,67 @@ set.seed(1)
 
 # Purpose 
 
-Prediction Breakdown according to https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_regression.html
+Install-train-predict-explain **LightGBM** model with DALEX.
 
-```{r install.requirements, eval = FALSE}
-devtools::install_github("Laurae2/lgbdl")
-lgbdl::lgb.dl(compiler = "vs")
-install.packages("DALEX", dependencies = TRUE)
-install.packages("r2d3",  dependencies = TRUE)
+
+# install lightgbm package
+
+## via CRAN:
+
+To install from source using mingw64-compilation:
+
+```{r, eval=FALSE}
+install.packages("lightgbm", dependencies = TRUE)
 
 ```
+
+## install a binary package via github repo
+
+Official document warns: 
+
+> Do not try using MinGW in Windows on many core systems.
+
+Therefore second option is installing the binary package. To install a binary for the R package:
+
+- Linux: lightgbm-{VERSION}-r40-linux.tgz
+- Mac: lightgbm-{VERSION}-r40-macos.tgz
+- Windows: lightgbm-{VERSION}-r40-windows.zip
+
+for example (for Windows),
+
+```{r, eval=FALSE}
+PKG_URL <- "https://github.com/microsoft/LightGBM/releases/download/v3.0.0rc1/lightgbm-3.0.0-1-r40-windows.zip"
+
+local_file <- paste0("lightgbm.", tools::file_ext(PKG_URL))
+
+download.file(
+  url = PKG_URL
+  , destfile = local_file
+)
+install.packages(
+  pkgs = local_file
+  , type = "binary"
+  , repos = NULL
+)
+```
+
+## Build from source
+
+To build from source, clone
+
+https://github.com/microsoft/LightGBM.git
+
+and run `build_r.R` according to:
+
+https://github.com/microsoft/LightGBM/tree/master/R-package#preparation
+
+
+
+
+
+
+# Sample Run: LightGBM
+
 
 ```{r require.packages, message=FALSE}
 require(tidyverse)
@@ -56,9 +112,6 @@ require(DALEX)
 require(iBreakDown)
 
 ```
-
-
-# LightGBM
 
 ## Create LGB Dataset
 
@@ -88,7 +141,7 @@ and
 https://lightgbm.readthedocs.io/en/latest/Parameters.html
 
 ```{r parameter.settings, echo = TRUE}
-lgb.grid = list(
+lgb_params = list(
   boosting  = "dart",
   objective = "regression",
   metric = "root_mean_squared_error"#,
@@ -97,7 +150,7 @@ lgb.grid = list(
 
 model_lgb.cv <- NULL
 model_lgb.cv <- lgb.cv(
-  params = lgb.grid, 
+  params = lgb_params, 
   data = train.lgb.Dataset, 
   learning_rate = 0.02, 
   num_leaves = 30,
@@ -113,7 +166,7 @@ best.iter
 
 ```{r}
 model_lgb = lgb.train(
-  params = lgb.grid, 
+  params = lgb_params, 
   data = train.lgb.Dataset, 
   learning_rate = 0.02, 
   num_leaves = 20,
@@ -124,6 +177,8 @@ model_lgb = lgb.train(
 
 ```
 
+## goodness of fit
+
 ```{r}
 test_data  <- dragons_test %>% select(-life_length) %>% mutate_all(as.numeric)
 test_label <- dragons_test %>% pull(life_length)
@@ -133,6 +188,9 @@ plot(test_label ~ preds)
 abline(0, 1, col = "red")
 
 ```
+
+## LightGBM-specific feature importance
+
 ```{r}
 varimp_lgb <- lightgbm::lgb.importance(model_lgb)
 varimp_lgb %>% 
@@ -142,7 +200,7 @@ varimp_lgb %>%
 ```
 
 
-# breakdown obsavation
+# Model agnostic explanation using DALEX
 
 according to:
 
@@ -153,7 +211,7 @@ and:
 https://cran.r-project.org/web/packages/iBreakDown/vignettes/vignette_iBreakDown_titanic.html
 
 
-predict_function are needed to break down a prediction by LGBM model
+`predict_function` are needed to prepare `DALEX::explain()` for LightGBM model and prediction.
 
 
 ```{r}
@@ -179,13 +237,12 @@ explain_lgb <- DALEX::explain(
   data = test_data,
   y = test_label,
   label = "LightGBM reg/RMSE",
-  predict_function = p_fun_lgb
+  predict_function = p_fun_lgb,
+  colorize = FALSE
 )
 
 ```
 
-
-# Visualization
 
 HEREAFTER, just Copy & Paste from official vignette:
 
@@ -197,7 +254,7 @@ plot(vi_lgb)
 
 ```
 
-## local_attributions
+## local_attributions for individual prediction
 
 ```{r}
 bd_lgb <- local_attributions(
@@ -229,6 +286,7 @@ plot(bd_lgb, baseline = 0)
 
 ```
 
+## Conditional distribution for partial predictions
 
 Use the `plot_distributions` argument to see distributions of partial predictions.
 
@@ -237,7 +295,7 @@ plot(bd_lgb, plot_distributions = TRUE)
 
 ```
 
-# Calculate uncertainty for variable attributions
+## Calculate uncertainty for variable attributions
 
 ```{r}
 bdun_lgb <- break_down_uncertainty(

@@ -45,10 +45,14 @@ require(iBreakDown)
 ```
 
 ```{r}
+parsnip:::possible_engines(boost_tree("regression"))
+```
+
+```{r}
 str(dragons)
 
 fit_xgb <- boost_tree("regression") %>%
-  set_engine("xgboost") %>%
+  parsnip::set_engine("xgboost") %>%
   fit(life_length ~ ., data = dragons)
 
 ```
@@ -94,5 +98,5 @@ explain_xgb %>%
 
 ```
 
-```
+
 
