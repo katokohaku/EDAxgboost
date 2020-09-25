@@ -311,12 +311,4 @@ plot(bdun_lgb)
 
 ```
 
-## Show only top features
-
-```{r fig.height=4, fig.width=4}
-# install.packages("r2d3")
-require(r2d3)
-plotD3(bd_lgb, max_features = 3)
-
-```
 
